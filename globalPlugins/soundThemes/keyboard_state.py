@@ -41,6 +41,7 @@ class KeyboardState:
     def __init__(self):
         self._pressed = set()
         self._last_navigation_press = 0.0
+        self._last_shift_press = 0.0
         self._lock = RLock()
 
     def update(self, vk: int, down: bool) -> bool:
@@ -51,6 +52,8 @@ class KeyboardState:
                 self._pressed.add(vk)
                 if vk in NAV_KEYS:
                     self._last_navigation_press = time.monotonic()
+                if vk in (0x10, 0xA0, 0xA1):
+                    self._last_shift_press = time.monotonic()
             else:
                 self._pressed.discard(vk)
             return bool(down and first)
@@ -75,6 +78,15 @@ class KeyboardState:
         with self._lock:
             self._pressed.clear()
             self._last_navigation_press = 0.0
+            self._last_shift_press = 0.0
+
+    def shift_recent(self, max_age: float = 0.35) -> bool:
+        """Detect NVDA's Shift-to-pause gesture even after the key is released."""
+        with self._lock:
+            return self.is_pressed(0x10) or bool(
+                self._last_shift_press and
+                time.monotonic() - self._last_shift_press <= max_age
+            )
 
     def navigation_recent(self, max_age: float = 0.25) -> bool:
         """True for a genuine recent navigation keystroke, not typed text."""

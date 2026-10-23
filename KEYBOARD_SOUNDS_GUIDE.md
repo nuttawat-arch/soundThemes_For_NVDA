@@ -1,4 +1,6 @@
-# Sound Themes for NVDA — Keyboard Sounds (v0.9.0)
+# Sound Themes for NVDA — Keyboard Sounds (v0.10.0)
+
+Version 0.10.0 fixes a separate cause of the Shift double-sound: NVDA fires `post_speechPaused` when Shift pauses speech. Previous builds played `system.paused_feedback` in addition to the keyboard key sound, even with Navigation disabled. That speech cue is now off by default and always suppressed around a physical Shift press. It can be enabled for other speech-pause events using the independent **Play speech-pause feedback** checkbox. In the editor, each sound event has a screen-reader-readable explanation of its NVDA trigger and typical app context. Its short item label (for example `C`, `Shift`, `LISTITEM`) stays searchable with first-letter navigation.
 
 Version 0.9.0: Windows sometimes exposes both a generic modifier key (such as VK_SHIFT) and its left/right form for the same physical press. The handler now normalizes them to one pressed key and one assigned WAV. This is particularly important for Shift, Control and Alt; it does not disable other keys or the ability to hold two physical modifiers together. If Shift still produces an extra sound, turn off independent keyboard/audio add-ons and Windows Sticky Keys notifications to isolate whether that sound is produced outside Sound Themes.
 

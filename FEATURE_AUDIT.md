@@ -1,4 +1,10 @@
-# Original add-ons → Sound Themes for NVDA 0.9.0
+# Original add-ons → Sound Themes for NVDA 0.10.0
+
+## v0.10.0 speech-pause/Shift audit and event accessibility
+
+- **Confirmed cause from user test and source:** after deleting the `Speech feedback paused` WAV, the extra Shift sound stopped. NVDA's `post_speechPaused` callback was unconditionally playing `system.paused_feedback` when speech was paused; this is a *System*, not Navigation, event, so toggling Navigation was ineffective. Physical modifier deduplication from 0.9.0 addressed a different duplication path.
+- New `pauseFeedback` is false by default for existing and new installs, independent of System and Keyboard modes. With it enabled, skip Shift-driven speech-pause events while Shift is held or for 350 ms after its last raw-key report. Physical Shift WAV is unaffected. The legacy pause event remains a configurable assignment and preview. Windows NVDA timing is not yet validated.
+- New `catalog.event_description` provides a separate human explanation for every catalog event (including all runtime NVDA roles/states and 255+ physical key identifiers). Specific examples include Explorer file list vs folder tree, browser tabs, document objects and Windows dialogs. Unknown/unsupported legacy events are identified as such. The wx editor has an accessible read-only description field and an optional delayed, latest-only speech announcement on selection; event list labels are unchanged for first-letter search.
 
 ## v0.9.0 physical Shift and missing original navigation/typing sounds
 

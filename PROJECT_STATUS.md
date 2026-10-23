@@ -1,4 +1,15 @@
-# Sound Themes for NVDA — Project status v0.9.0 (2026-10-24)
+# Sound Themes for NVDA — Project status v0.10.0 (2026-10-24)
+
+## Completed in v0.10.0
+
+- Diagnosed the user's extra Shift sound from the event WAV `Speech feedback paused`. The code unconditionally played `system.paused_feedback` upon NVDA's `post_speechPaused`, which also fires when Shift pauses screen-reader speech, so switching off Navigation did not mute it. This was a *separate* root cause from the physical modifier alias bug corrected in v0.9.
+- Added `pauseFeedback` config setting and Settings checkbox, **off by default**, so speech-pause system cues are opt-in. Even with the setting enabled, holding Shift or having pressed it within the previous 350 ms prevents that event sound; the physical keyboard Shift effect is unaffected. The original WAV remains installed and assignable.
+- Added `event_description` explanations for named events, all dynamically listed NVDA roles/states, and the entire Windows virtual-key catalog. Specific examples say which contexts apply (Explorer file list/folder pane, browser tab, edit fields, alerts), and note unreliable historical-only automatic triggers. The editor exposes an accessible read-only description field. Users can hear descriptions when moving through the list; a 170-ms cancelable announcement ensures rapid arrowing does not build a speech backlog, while preview playback still starts independently and promptly. Bare first-letter-searchable list labels remain unchanged.
+- Built version `0.10.0` installer/source distribution and updated English/Thai event explanations, help, README, feature audit and keyboard guide. GitHub push/tag and Windows NVDA in-app acceptance remain user-side verification steps.
+
+## v0.10.0 verification and remaining work
+
+- Offline regression tests expanded from 39 to **42** and passed. Both v0.10.0 archives passed integrity checks; the installer contains **706 genuine WAVs** and manifest version `0.10.0`. An NVDA instance is not available inside this Linux workspace, so actual key-hook timing and live speech announcement behavior remain unverified.
 
 ## Completed in v0.9.0
 

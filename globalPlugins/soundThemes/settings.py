@@ -8,11 +8,13 @@ import os
 
 import wx
 import addonHandler
+import languageHandler
+import ui
 from controlTypes import Role, State
 from gui import guiHelper
 from gui.settingsDialogs import SettingsPanel
 
-from .catalog import all_events
+from .catalog import all_events, event_description
 from .keyboard_catalog import all_keyboard_events, event_for_virtual_key, name_for_event
 from .modes import resolve_modes
 
@@ -94,6 +96,10 @@ class SoundSettingsPanel(SettingsPanel):
         self.typing.Bind(wx.EVT_CHECKBOX, lambda evt: self.on_mode_change("typing"))
         self.keyboard.Bind(wx.EVT_CHECKBOX, lambda evt: self.on_mode_change("keyboard"))
         self.system = self._check(_("Play &system sounds, including lock/unlock"), "system")
+        self.pauseFeedback = self._check(
+            _("Play speech-pause feedback (except when pressing Shift; off by default)"),
+            "pauseFeedback",
+        )
         self.mouse = self._check(_("Play sounds on mouse &hover"), "mouse")
         self.mouse.Bind(wx.EVT_CHECKBOX, self.on_mouse)
         self.onlyEditable = self._check(_("Only play typing sounds in &editable fields"), "onlyEditable")
@@ -183,7 +189,7 @@ class SoundSettingsPanel(SettingsPanel):
         if 0 <= keyboard_selected < len(self.keyboard_ids):
             config.conf[SECTION]["keyboardTheme"] = self.keyboard_ids[keyboard_selected]
         self.on_mode_change("keyboard" if self.keyboard.GetValue() else "")
-        for key in ("enabled", "navigation", "typing", "system", "mouse", "onlyEditable",
+        for key in ("enabled", "navigation", "typing", "system", "pauseFeedback", "mouse", "onlyEditable",
                     "arrowNavSounds", "sayRoles", "sayStates", "keyboard"):
             config.conf[SECTION][key] = getattr(self, key).GetValue()
         config.conf[SECTION]["hoverDelay"] = self.delay.GetValue()
@@ -389,6 +395,7 @@ class ThemeEditor(wx.Dialog):
         self.plugin = plugin
         self.store = store
         self.identifier = identifier
+        self._description_timer = None
         catalog = all_keyboard_events() if store.kind == "keyboard" else all_events(Role, State)
         self.entries = [(group, key, label) for group, key, label in catalog
                         if store.accepts(key)]
@@ -402,6 +409,16 @@ class ThemeEditor(wx.Dialog):
         self.events = wx.ListBox(self)
         self.events.SetName(_("Sound events"))
         main.Add(self.events, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
+        main.Add(wx.StaticText(self, label=_("Where and when this sound is used:")),
+                 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
+        self.event_help = wx.TextCtrl(self, style=wx.TE_READONLY | wx.TE_MULTILINE,
+                                      size=(-1, 64))
+        self.event_help.SetName(_("Description of selected sound event"))
+        main.Add(self.event_help, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+        self.announce_help = wx.CheckBox(self, label=_(
+            "Speak the event description when moving through the list"))
+        self.announce_help.SetValue(True)
+        main.Add(self.announce_help, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
         self.path_label = wx.StaticText(self, label=_("Sound file: none"))
         main.Add(self.path_label, 0, wx.ALL, 8)
         if store.kind == "keyboard":
@@ -423,7 +440,7 @@ class ThemeEditor(wx.Dialog):
             buttons.Add(button, 0, wx.RIGHT, 6)
         main.Add(buttons, 0, wx.ALL, 8)
         close = wx.Button(self, wx.ID_CLOSE, _("&Done"))
-        close.Bind(wx.EVT_BUTTON, lambda evt: self.EndModal(wx.ID_CLOSE))
+        close.Bind(wx.EVT_BUTTON, self.on_done)
         main.Add(close, 0, wx.ALL | wx.ALIGN_RIGHT, 8)
         self.SetSizer(main)
         self.group.Bind(wx.EVT_CHOICE, self.on_group)
@@ -449,6 +466,16 @@ class ThemeEditor(wx.Dialog):
 
     def on_select(self, evt):
         key = self.selected_key()
+        label = self.visible[self.events.GetSelection()][1] if key else ""
+        explanation = event_description(key, label, languageHandler.getLanguage()) if key else ""
+        self.event_help.SetValue(explanation)
+        if self._description_timer is not None:
+            self._description_timer.Stop()
+            self._description_timer = None
+        if evt is not None and key and self.announce_help.GetValue():
+            # Let NVDA announce the bare list item first; a quick series of
+            # arrow presses must never queue stale, wordy descriptions.
+            self._description_timer = wx.CallLater(170, self._announce_event, key, explanation)
         mapping = self.store.load(self.identifier)["sounds"]
         value = mapping.get(key)
         description = (_("%d sound variations") % len(value) if isinstance(value, list)
@@ -461,6 +488,17 @@ class ThemeEditor(wx.Dialog):
                     self.plugin.audio.preview_file(path, self.plugin.setting("volume"))
                 except (ValueError, OSError):
                     pass
+
+    def _announce_event(self, key, explanation):
+        self._description_timer = None
+        if self.selected_key() == key and self.announce_help.GetValue():
+            ui.message(explanation)
+
+    def on_done(self, evt):
+        if self._description_timer is not None:
+            self._description_timer.Stop()
+            self._description_timer = None
+        self.EndModal(wx.ID_CLOSE)
 
     def on_key_capture(self, event):
         """Consume keystrokes only in this field; keep Tab accessible elsewhere."""

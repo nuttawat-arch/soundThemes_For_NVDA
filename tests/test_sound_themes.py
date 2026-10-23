@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib
 import importlib.util
+import ast
 import io
 import json
 import queue
@@ -431,6 +432,79 @@ class SoundThemeTests(unittest.TestCase):
         self.assertEqual(keys_module.physical_virtual_key(0x12, extended=True), 0xA5)
         # Left and right Shift really can be held independently.
         self.assertTrue(keys.update_physical(0x10, 0x2A, False, True)[0])
+
+    def test_speech_pause_caused_by_shift_is_not_a_second_keyboard_sound(self):
+        keys = keys_module.KeyboardState()
+        self.assertFalse(keys.shift_recent())
+        keys.update_physical(0x10, 0x2A, False, True)
+        self.assertTrue(keys.shift_recent())
+        keys.update_physical(0x10, 0x2A, False, False)
+        self.assertTrue(keys.shift_recent())  # async speech callback can arrive after keyup
+        with patch.object(keys_module.time, "monotonic", return_value=time.monotonic() + 1):
+            self.assertFalse(keys.shift_recent())
+        keys.clear()
+        self.assertFalse(keys.shift_recent())
+
+        plugin = (PACKAGE_ROOT / "__init__.py").read_text(encoding="utf-8")
+        self.assertIn('"pauseFeedback": "boolean(default=false)"', plugin)
+        callback = plugin.split("def _speech_paused", 1)[1].split("def _startup", 1)[0]
+        self.assertIn('self.setting("pauseFeedback")', callback)
+        self.assertIn('not self.keys.shift_recent()', callback)
+        self.assertIn('not _pressed(0x10)', callback)
+
+        # Run the actual NVDA-independent callback body with a stub plugin;
+        # don't rely solely on matching its source text.
+        parsed = ast.parse(plugin)
+        class_node = next(node for node in parsed.body
+                          if isinstance(node, ast.ClassDef) and node.name == "GlobalPlugin")
+        callback_node = next(node for node in class_node.body
+                             if isinstance(node, ast.FunctionDef) and node.name == "_speech_paused")
+        environment = {"_pressed": lambda vk: False}
+        exec(compile(ast.Module(body=[callback_node], type_ignores=[]), "<pause-test>", "exec"),
+             environment)
+        played = []
+        stub = types.SimpleNamespace(
+            keys=keys_module.KeyboardState(),
+            setting=lambda option: True,
+            play_event=lambda *args: played.append(args),
+        )
+        stub.keys.update_physical(0x10, 0x2A, False, True)
+        environment["_speech_paused"](stub, True)
+        self.assertEqual(played, [])
+        stub.keys.clear()
+        environment["_speech_paused"](stub, True)
+        self.assertEqual(played, [("system.paused_feedback", 0)])
+        stub.setting = lambda option: False
+        environment["_speech_paused"](stub, True)
+        self.assertEqual(len(played), 1)
+
+    def test_all_sound_events_have_accessible_contextual_descriptions(self):
+        for group, event_key, label in catalog.all_events(
+                [types.SimpleNamespace(name="LISTITEM"), types.SimpleNamespace(name="CHIP")],
+                [types.SimpleNamespace(name="SELECTED")]):
+            description = catalog.event_description(event_key, label)
+            self.assertTrue(description.strip(), (group, event_key))
+            self.assertNotEqual(description, label)
+        for _, event_key, label in keyboard_catalog.all_keyboard_events():
+            self.assertTrue(catalog.event_description(event_key, label).strip())
+        self.assertIn("File Explorer", catalog.event_description("role.listitem", "LISTITEM"))
+        self.assertIn("browser", catalog.event_description("role.tab", "TAB"))
+        self.assertIn("Shift", catalog.event_description("system.paused_feedback"))
+        self.assertIn("physical left shift", catalog.event_description("keyboard.left_shift", "Left Shift").lower())
+        self.assertIn("File Explorer", catalog.event_description("role.listitem", "LISTITEM", "th_TH"))
+        self.assertIn("Shift", catalog.event_description("system.paused_feedback", language="th"))
+        self.assertIn("ปุ่ม", catalog.event_description("keyboard.c", "C", "th"))
+        self.assertEqual(set(catalog.EVENT_DESCRIPTIONS), set(catalog.TH_EVENT_DESCRIPTIONS))
+
+    def test_event_description_is_announced_separately_without_changing_search_names(self):
+        editor = (PACKAGE_ROOT / "settings.py").read_text(encoding="utf-8")
+        self.assertIn("self.events.Set([name for key, name in self.visible])", editor)
+        self.assertIn("self.event_help.SetValue(explanation)", editor)
+        self.assertIn("languageHandler.getLanguage()", editor)
+        self.assertIn("self.announce_help.GetValue()", editor)
+        self.assertIn("ui.message(explanation)", editor)
+        self.assertIn("wx.CallLater(170, self._announce_event", editor)
+        self.assertIn("self.events.Bind(wx.EVT_LISTBOX, self.on_select)", editor)
 
     def test_key_catalog_distinct_events_for_every_windows_vk(self):
         entries = keyboard_catalog.all_keyboard_events()

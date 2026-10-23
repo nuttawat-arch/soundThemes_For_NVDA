@@ -37,6 +37,7 @@ config.conf.spec[SECTION] = {
     "typing": "boolean(default=true)",
     "keyboard": "boolean(default=false)",
     "system": "boolean(default=true)",
+    "pauseFeedback": "boolean(default=false)",
     "mouse": "boolean(default=false)",
     "hoverDelay": "integer(default=270)",
     "arrowNavSounds": "boolean(default=true)",
@@ -275,8 +276,14 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         self.play_event("system.error", 0)
 
     def _speech_paused(self, switch: bool):
-        """Modern NVDA speech pause extension: original paused_feedback cue."""
-        if switch:
+        """Opt-in pause cue, never for the ordinary Shift-to-pause gesture.
+
+        NVDA emits post_speechPaused when Shift pauses speech. This is a
+        system callback, not a keyboard sound, so the Navigation switch does
+        not affect it. Keep it independent and silent by default.
+        """
+        if (switch and self.setting("pauseFeedback") and
+                not self.keys.shift_recent() and not _pressed(0x10)):
             self.play_event("system.paused_feedback", 0)
 
     def _startup(self, *args, **kwargs):
