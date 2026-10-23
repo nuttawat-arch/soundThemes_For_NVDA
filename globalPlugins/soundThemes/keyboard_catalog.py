@@ -107,11 +107,11 @@ _NAMED = {
 }
 
 for _idx in range(10):
-    _NAMED[0x30 + _idx] = (str(_idx), f"Number {_idx}", "Numbers")
+    _NAMED[0x30 + _idx] = (str(_idx), str(_idx), "Numbers")
     _NAMED[0x60 + _idx] = (f"numpad_{_idx}", f"Numpad {_idx}", "Numpad")
 for _idx in range(26):
     _letter = chr(97 + _idx)
-    _NAMED[0x41 + _idx] = (_letter, f"Letter {_letter.upper()}", "Letters")
+    _NAMED[0x41 + _idx] = (_letter, _letter.upper(), "Letters")
 for _idx in range(1, 25):
     _NAMED[0x6F + _idx] = (f"f{_idx}", f"F{_idx}", "Function keys")
 for _vk, _slug, _label in (

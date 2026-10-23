@@ -185,6 +185,33 @@ class ThemeStore:
             pass
         return None
 
+    def preview_sound(self, theme_id: str) -> Path | None:
+        """Pick one REAL recording from this pack for instant list navigation.
+
+        Deliberately avoid role/keyboard fallbacks, randomness and other packs.
+        The common representative cue comes first; sparse custom packs use
+        their first valid file instead of remaining silent unnecessarily.
+        """
+        priorities = {
+            "navigation": ("role.listitem", "role.treeviewitem", "role.button", "nav.focus"),
+            "typing": ("key.character", "key.space", "key.backspace"),
+            "keyboard": ("keyboard.a", "keyboard.space", "keyboard.default"),
+        }.get(self.kind, ())
+        try:
+            folder = self.directory(theme_id)
+            mapped = self.load(theme_id)["sounds"]
+            for event in (*priorities, *sorted(mapped)):
+                filenames = mapped.get(event)
+                if not filenames:
+                    continue
+                for filename in (filenames if isinstance(filenames, list) else [filenames]):
+                    candidate = folder / filename
+                    if candidate.is_file():
+                        return candidate
+        except (OSError, ValueError, KeyError):
+            pass
+        return None
+
     def create(self, name: str, base: str | None = None) -> str:
         identifier = "user:" + safe_slug(name)
         destination = self.directory(identifier)

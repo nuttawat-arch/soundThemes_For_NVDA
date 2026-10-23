@@ -145,12 +145,19 @@ class AudioEngine:
         # sounds must not accumulate while all playback voices are occupied.
         self._queue = queue.Queue(maxsize=self.MAX_VOICES)
         self._closed = threading.Event()
+        self._preview_requests = queue.Queue(maxsize=1)
+        self._preview_lock = threading.Lock()
+        self._preview_serial = 0
         self._voices = [
             _PlaybackVoice(index, self._closed, self._log)
             for index in range(self.MAX_VOICES)
         ]
         self._worker = threading.Thread(target=self._run, daemon=True, name="NVDA-SoundThemes")
         self._worker.start()
+        self._preview_worker = threading.Thread(
+            target=self._run_previews, daemon=True, name="NVDA-SoundThemes-Preview",
+        )
+        self._preview_worker.start()
 
     def _load_bank(self, store, identifier: str, volume: int):
         """Atomically swap all cached audio. Never touch the playback thread's players."""
@@ -224,8 +231,52 @@ class AudioEngine:
                 pass  # A newer event won the race; never reorder it.
 
     def preview_file(self, path: Path, volume: int):
-        sound = decode_pcm(path, volume)
-        self._enqueue_latest(sound)
+        """Schedule a latest-only audition; decoding never blocks wx/NVDA UI."""
+        if self._closed.is_set():
+            return
+        with self._preview_lock:
+            self._preview_serial += 1
+            request = (self._preview_serial, Path(path), volume)
+        try:
+            self._preview_requests.put_nowait(request)
+        except queue.Full:
+            try:
+                self._preview_requests.get_nowait()
+            except queue.Empty:
+                pass
+            try:
+                self._preview_requests.put_nowait(request)
+            except queue.Full:
+                pass
+
+    def _run_previews(self):
+        # Cache a handful of recently visited files. This is separate from the
+        # active theme bank so changing the preview never switches a theme.
+        cache = {}
+        while not self._closed.is_set():
+            try:
+                serial, path, volume = self._preview_requests.get(timeout=0.05)
+            except queue.Empty:
+                continue
+            while True:
+                try:
+                    serial, path, volume = self._preview_requests.get_nowait()
+                except queue.Empty:
+                    break
+            try:
+                cache_key = (path, volume, path.stat().st_mtime_ns)
+                sound = cache.get(cache_key)
+                if sound is None:
+                    sound = decode_pcm(path, volume)
+                    if len(cache) >= 8:
+                        cache.pop(next(iter(cache)))
+                    cache[cache_key] = sound
+                with self._preview_lock:
+                    newest = serial == self._preview_serial
+                if newest and not self._closed.is_set():
+                    self._enqueue_latest(sound)
+            except (OSError, ValueError, wave.Error) as error:
+                self._log.warning("Sound Themes: preview WAV skipped: %s", error)
 
     def _run(self):
         pending = None
@@ -259,6 +310,7 @@ class AudioEngine:
 
     def close(self):
         self._closed.set()
+        self._preview_worker.join(timeout=0.4)
         self._worker.join(timeout=0.4)
         for voice in self._voices:
             voice.close()

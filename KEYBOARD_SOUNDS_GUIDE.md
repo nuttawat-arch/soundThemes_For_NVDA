@@ -1,4 +1,6 @@
-# Sound Themes for NVDA — Keyboard Sounds (v0.7.0)
+# Sound Themes for NVDA — Keyboard Sounds (v0.8.0)
+
+New in 0.8.0: arrow through a keyboard theme (for example Cherry or KAT) in the settings choice or manager list to hear its representative recording instantly, without changing the active theme. The list says `Cherry`, not `Built-in: Cherry`, so typing `C` jumps to it. In the keyboard event editor, moving the selection auditions the current event; names `A` to `Z` and `0` to `9` start with those actual characters. Previews are decoded in the background and obsolete pending previews are discarded when navigating quickly. This does not change fixed, non-random in-game keyboard cues.
 
 ## Three sound categories
 

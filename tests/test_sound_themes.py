@@ -410,6 +410,77 @@ class SoundThemeTests(unittest.TestCase):
         imported = self.keyboard.import_zip(zip_path, "Reimport Key Pack")
         self.assertIn("keyboard.a", self.keyboard.load(imported)["sounds"])
 
+    def test_preview_pack_chooses_one_real_in_pack_recording(self):
+        effects = PACKAGE_ROOT / "effects"
+        nav = packs.ThemeStore(effects / "navigation", self.home / "nav-preview", "navigation")
+        typing = packs.ThemeStore(effects / "typing", self.home / "typing-preview", "typing")
+        keyboard = packs.ThemeStore(effects / "keyboard", self.home / "keyboard-preview", "keyboard")
+        self.assertEqual(nav.preview_sound("builtin:voiceover").name, "role.listitem.wav")
+        self.assertTrue(typing.preview_sound("builtin:classic-typewriter").name.startswith("key.character"))
+        self.assertEqual(keyboard.preview_sound("builtin:cherry").name, "keyboard.a.wav")
+        self.assertIsNone(keyboard.preview_sound("user:nonexistent"))
+        personal = keyboard.create("Sparse Pack")
+        keyboard.assign(personal, "keyboard.f7", self.sample)
+        self.assertEqual(keyboard.preview_sound(personal).name, "keyboard.f7.wav")
+
+    def test_sound_lists_have_first_letter_search_labels_and_select_to_preview(self):
+        panel = (PACKAGE_ROOT / "settings.py").read_text(encoding="utf-8")
+        self.assertIn("self.theme_list.Set([name for _, name in self.choices])", panel)
+        self.assertIn("self.theme_list.Bind(wx.EVT_LISTBOX, self.on_theme_selection)", panel)
+        self.assertIn("self.events.Bind(wx.EVT_LISTBOX, self.on_select)", panel)
+        self.assertIn("self.events.Set([name for key, name in self.visible])", panel)
+        self.assertGreaterEqual(panel.count("self.preview_setting_theme("), 3)
+        self.assertEqual([label for _, key, label in keyboard_catalog.all_keyboard_events()
+                          if key == "keyboard.c"], ["C"])
+        future = types.SimpleNamespace(name="CHIP")
+        self.assertIn(("NVDA roles", "role.chip", "CHIP"), catalog.all_events([future], []))
+
+    def test_rapid_preview_selection_skips_outdated_decoding_without_blocking_ui(self):
+        slow_started = threading.Event()
+        release_old = threading.Event()
+        preview_played = threading.Event()
+        heard = []
+        latest_file = self.home / "latest.wav"
+        make_wav(latest_file)
+
+        def delayed_decode(path, volume):
+            if path == self.sample:
+                slow_started.set()
+                release_old.wait(2)
+                return (1, 16, 22050), b"old"
+            return (1, 16, 22050), b"latest"
+
+        class FakeWavePlayer:
+            def __init__(self, **kwargs):
+                pass
+
+            def feed(self, raw):
+                heard.append(raw)
+                preview_played.set()
+
+            def idle(self):
+                pass
+
+            def close(self):
+                pass
+
+        logger = types.SimpleNamespace(warning=lambda *args: None)
+        with patch.dict(sys.modules, {"nvwave": types.SimpleNamespace(WavePlayer=FakeWavePlayer)}), \
+                patch.object(audio, "decode_pcm", delayed_decode):
+            engine = audio.AudioEngine(lambda: "device", logger)
+            try:
+                engine.preview_file(self.sample, 100)
+                self.assertTrue(slow_started.wait(2))
+                started = time.monotonic()
+                engine.preview_file(latest_file, 100)
+                self.assertLess(time.monotonic() - started, 0.05)
+                release_old.set()
+                self.assertTrue(preview_played.wait(2))
+                self.assertEqual(heard, [b"latest"])
+            finally:
+                release_old.set()
+                engine.close()
+
     def test_keyboard_pack_never_randomizes_and_unknown_files_are_ignored(self):
         theme = self.keyboard.create("Fixed Keys")
         folder = self.keyboard.directory(theme)

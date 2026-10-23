@@ -85,11 +85,11 @@ def all_events(roles=(), states=()):
     for role in roles:
         name = canonical_name(role)
         if name:
-            entries.append(("NVDA roles", f"role.{name}", f"Role: {getattr(role, 'name', name)}"))
+            entries.append(("NVDA roles", f"role.{name}", str(getattr(role, 'name', name))))
     for state in states:
         name = canonical_name(state)
         if name:
-            entries.append(("NVDA states", f"state.{name}", f"State: {getattr(state, 'name', name)}"))
+            entries.append(("NVDA states", f"state.{name}", str(getattr(state, 'name', name))))
     entries.append(("NVDA roles", "role.default", "Any other role (fallback)"))
     entries.append(("NVDA states", "state.default", "Any other state (fallback)"))
     return sorted(entries, key=lambda row: (row[0], row[2].casefold()))

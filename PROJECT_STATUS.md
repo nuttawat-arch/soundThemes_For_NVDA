@@ -1,4 +1,17 @@
-# Sound Themes for NVDA — Project status v0.7.0 (2026-10-24)
+# Sound Themes for NVDA — Project status v0.8.0 (2026-10-24)
+
+## Completed in v0.8.0
+
+- Auto-audition WAVs while changing any of the three theme selectors in the NVDA Sound Themes settings panel, any of the three theme lists in Manage Sound Themes, and the selected item in the event editor. No activation/mode change is required; missing sounds do not open popups.
+- Theme list items now use only their human names, without `Built-in:`/`Custom:` prefixes. This restores native first-letter navigation (press C for Cherry). In the sound event editor removed `Role:`/`State:` labels and ` (assigned)` suffixes; letters A–Z and digits 0–9 use their characters as list labels. Category controls remain, and the exact theme/event ID still drives every action.
+- Added a nonblocking, latest-only preview WAV decoding worker, an eight-recording decoded preview cache, and a generation guard against obsolete in-progress previews. It dispatches into the existing twelve-voice player and does not replace the selected theme or pollute another pack.
+- Promoted release metadata to `0.8.0`; updated README, author guides, event and audio audits, and translated add-on help. GitHub Actions already builds from manifest version on pushes and releases from new `v*` tags; source instructions now distinguish updating a prior clone from a first push.
+
+## v0.8.0 verification and remaining work
+
+- **37/37 NVDA-independent Python regression tests passed**, including representative pack selection, first-letter searchable labels, and cancellation of a slow obsolete preview decode. All prior concurrency and original audio tests still pass.
+- Real Windows NVDA wx.ListBox/Choice typeahead, real WASAPI cue timing, secure desktop and focus navigation must still be verified; no claim of fully tested live Windows accessibility until then.
+- GitHub repository `nuttawat-arch/soundThemes_For_NVDA` was observed public but still empty when checked. A new `.nvda-addon` installer and source archive can be released now; publishing a GitHub Release still requires an initial source push and the `v0.8.0` tag (or a separately authorized remote release operation).
 
 ## Completed in v0.7.0
 

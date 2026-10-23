@@ -35,6 +35,19 @@ def ask_name(parent, title: str, initial: str = "") -> str | None:
     return None
 
 
+def preview_selected_theme(plugin, store, identifier):
+    """Audition a pack without activating it or blocking the wx event loop."""
+    if not identifier:
+        return
+    try:
+        path = store.preview_sound(identifier)
+        if path is not None:
+            plugin.audio.preview_file(path, plugin.setting("volume"))
+    except (ValueError, OSError, KeyError):
+        # An empty/unreadable theme should not interrupt keyboard navigation.
+        pass
+
+
 class SoundSettingsPanel(SettingsPanel):
     plugin = None
     title = _("Sound Themes")
@@ -66,6 +79,12 @@ class SoundSettingsPanel(SettingsPanel):
         keyboard_chosen = plugin.setting("keyboardTheme")
         if keyboard_chosen in self.keyboard_ids:
             self.keyboard_theme.SetSelection(self.keyboard_ids.index(keyboard_chosen))
+        self.theme.Bind(wx.EVT_CHOICE, lambda evt: self.preview_setting_theme(
+            self.theme, self.nav_ids, plugin.navigation_store))
+        self.typing_theme.Bind(wx.EVT_CHOICE, lambda evt: self.preview_setting_theme(
+            self.typing_theme, self.typing_ids, plugin.typing_store))
+        self.keyboard_theme.Bind(wx.EVT_CHOICE, lambda evt: self.preview_setting_theme(
+            self.keyboard_theme, self.keyboard_ids, plugin.keyboard_store))
 
         self.enabled = self._check(_("&Enable sound effects"), "enabled")
         self.navigation = self._check(_("Play &navigation, role and state sounds"), "navigation")
@@ -101,6 +120,11 @@ class SoundSettingsPanel(SettingsPanel):
         cb = self.helper.addItem(wx.CheckBox(self, label=label))
         cb.SetValue(self.plugin.setting(key))
         return cb
+
+    def preview_setting_theme(self, control, identifiers, store):
+        index = control.GetSelection()
+        if 0 <= index < len(identifiers):
+            preview_selected_theme(self.plugin, store, identifiers[index])
 
     def on_mouse(self, evt):
         self.delay.Enable(self.mouse.GetValue())
@@ -200,6 +224,7 @@ class ThemeManagerPage(wx.Panel):
                  0, wx.ALL, 8)
         self.theme_list = wx.ListBox(self, style=wx.LB_SINGLE)
         self.theme_list.SetName(_("Available sound themes"))
+        self.theme_list.Bind(wx.EVT_LISTBOX, self.on_theme_selection)
         main.Add(self.theme_list, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
         buttons = wx.FlexGridSizer(cols=2, hgap=5, vgap=5)
         actions = (
@@ -224,13 +249,19 @@ class ThemeManagerPage(wx.Panel):
 
     def refresh(self, select_id=None):
         self.choices = self.store.themes()
-        self.theme_list.Set([("Built-in: " if identifier.startswith("builtin:") else "Custom: ") + name
-                             for identifier, name in self.choices])
+        # A native list can jump to "Cherry" with C only if the label STARTS
+        # with Cherry. Keep the source (builtin/user) in the opaque ID instead.
+        self.theme_list.Set([name for _, name in self.choices])
         ids = [identifier for identifier, _ in self.choices]
         if select_id in ids:
             self.theme_list.SetSelection(ids.index(select_id))
         elif ids:
             self.theme_list.SetSelection(0)
+
+    def on_theme_selection(self, evt):
+        index = self.theme_list.GetSelection()
+        if 0 <= index < len(self.choices):
+            preview_selected_theme(self.plugin, self.store, self.choices[index][0])
 
     def selected(self):
         index = self.theme_list.GetSelection()
@@ -369,7 +400,7 @@ class ThemeEditor(wx.Dialog):
         main.Add(self.group, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
         main.Add(wx.StaticText(self, label=_("Choose an &event to assign a WAV file:")), 0, wx.ALL, 8)
         self.events = wx.ListBox(self)
-        self.events.SetName(_("Events; assigned sounds are marked"))
+        self.events.SetName(_("Sound events"))
         main.Add(self.events, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
         self.path_label = wx.StaticText(self, label=_("Sound file: none"))
         main.Add(self.path_label, 0, wx.ALL, 8)
@@ -405,12 +436,12 @@ class ThemeEditor(wx.Dialog):
             return
         label = self.groups[self.group.GetSelection()]
         self.visible = [(key, name) for group, key, name in self.entries if group == label]
-        mapping = self.store.load(self.identifier)["sounds"]
-        self.events.Set([name + (_(" (assigned)") if key in mapping else "")
-                         for key, name in self.visible])
+        # Keep the names unprefixed for first-letter keyboard navigation.
+        # Assignment details are in the separate Sound file label below.
+        self.events.Set([name for key, name in self.visible])
         if self.visible:
             self.events.SetSelection(0)
-        self.on_select(None)
+        self.on_select(evt)
 
     def selected_key(self):
         index = self.events.GetSelection()
@@ -423,6 +454,13 @@ class ThemeEditor(wx.Dialog):
         description = (_("%d sound variations") % len(value) if isinstance(value, list)
                        else value or _("none (fallback may apply)"))
         self.path_label.SetLabel(_("Sound file: %s") % description)
+        if evt is not None and key:
+            path = self.store.sound_for(self.identifier, key)
+            if path is not None:
+                try:
+                    self.plugin.audio.preview_file(path, self.plugin.setting("volume"))
+                except (ValueError, OSError):
+                    pass
 
     def on_key_capture(self, event):
         """Consume keystrokes only in this field; keep Tab accessible elsewhere."""

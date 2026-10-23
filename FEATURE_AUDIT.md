@@ -1,4 +1,11 @@
-# Original add-ons → Sound Themes for NVDA 0.7.0
+# Original add-ons → Sound Themes for NVDA 0.8.0
+
+## v0.8.0 keyboard-first preview audit
+
+- All three settings theme selectors and all three manager theme lists audition a real in-pack sample on **user-initiated selection change**, without activating the pack or blocking wx to decode the WAV. The event editor's list also auditions the selected event if its WAV exists, without an unwanted message box for missing audio.
+- Native first-letter search now works because manager names are `Cherry`, `KAT`, etc., not `Built-in: Cherry`. Event-list names omit prefixes `Role:`/`State:` and the ` (assigned)` suffix; keyboard letter/digit labels begin directly with the character. Category separation and assignment information remain available outside list item names.
+- `AudioEngine` adds one latest-only decode worker with a small preview cache and a generation guard. This prevents an old preview that is still decoding from being queued after the user has moved to a newer item; it reuses the existing twelve-voice bounded playback engine.
+- All 510 original WAV assets are unchanged. Offline tests verify representative pack selection, first-letter labels, and stale-preview cancellation; live Windows/NVDA UI acceptance tests remain necessary.
 
 ## v0.7.0 polyphonic playback and single packaged sound root
 

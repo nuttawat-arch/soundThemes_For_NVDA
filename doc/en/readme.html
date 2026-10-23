@@ -1,7 +1,9 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>Sound Themes for NVDA</title></head>
 <body><h1>Sound Themes for NVDA</h1>
-<h2>Version 0.7.0: Parallel audio and a unified sound folder</h2>
+<h2>Version 0.8.0: Instant sound previews on selection</h2>
+<p>Arrow through a Navigation, Typing or Keyboard sound pack list to hear a genuine sample from the highlighted pack, without activating it. Arrow through the event editor to hear that event's assigned WAV. Empty entries are silent. Previews load off the dialog thread; when navigation changes before decoding finishes, old pending previews are ignored.</p>
+<p>Pack names now begin directly with the name, such as <strong>Cherry</strong> instead of "Built-in: Cherry", so typing C selects Cherry. The event list also omits redundant role/state type prefixes and assignment suffixes; keyboard letters are listed as A, B, C, etc. Category controls remain separate.</p>
 <p>Up to twelve independent NVDA audio streams play at once: long navigation and typing recordings no longer interrupt or delay other sounds. Playback has a bounded queue to avoid accumulating sounds long after focus moves. Keyboard Sounds remains mutually exclusive with Navigation and Typing, as before. Bundled effects are stored directly under <code>globalPlugins/soundThemes/effects/</code>; personal themes stay in the NVDA configuration folder so upgrades do not erase them.</p>
 <p>Developer: Nuttawat Seecham (nutblind2545t@gmail.com). Homepage and source: <a href="https://github.com/nuttawat-arch/soundThemes_For_NVDA">soundThemes_For_NVDA on GitHub</a>.</p>
 <p>There are three sound modes. Navigation and Typing are enabled by default, while Keyboard Sounds is disabled.

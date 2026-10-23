@@ -1,4 +1,6 @@
-# Sound provenance and merger status — v0.7.0 (2026-10-24)
+# Sound provenance and merger status — v0.8.0 (2026-10-24)
+
+Version 0.8.0 adds automatic theme/event audition using the very same real WAV files listed below; it neither synthesizes new samples nor changes pack identities. Keyboard previews prefer that pack's original `keyboard.a.wav`, falling back to an available file in the *same* pack.
 
 All **510 original recordings** now reside in the single packaged directory `globalPlugins/soundThemes/effects/`; the old extra `globalPlugins/Sound Themes for NVDA/` asset directory is no longer used. No sound recording was deleted by the move, and no synthesized sound generator is included in source or installer. Runtime playback has up to twelve independent streams with a bounded wait queue; see `FEATURE_AUDIT.md`.
 
