@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Sound Themes for NVDA</title></head>
+<body><h1>Sound Themes for NVDA</h1>
+<h2>Version 0.7.0: Parallel audio and a unified sound folder</h2>
+<p>Up to twelve independent NVDA audio streams play at once: long navigation and typing recordings no longer interrupt or delay other sounds. Playback has a bounded queue to avoid accumulating sounds long after focus moves. Keyboard Sounds remains mutually exclusive with Navigation and Typing, as before. Bundled effects are stored directly under <code>globalPlugins/soundThemes/effects/</code>; personal themes stay in the NVDA configuration folder so upgrades do not erase them.</p>
+<p>Developer: Nuttawat Seecham (nutblind2545t@gmail.com). Homepage and source: <a href="https://github.com/nuttawat-arch/soundThemes_For_NVDA">soundThemes_For_NVDA on GitHub</a>.</p>
+<p>There are three sound modes. Navigation and Typing are enabled by default, while Keyboard Sounds is disabled.
+Enabling Keyboard Sounds automatically turns off BOTH Navigation and Typing. Turning either of those
+back on disables Keyboard Sounds. Lock/unlock sounds stay under the independent System option.</p>
+<p>Navigation sounds respond to actual NVDA focus, roles, browse, caret and selection changes.
+With Keyboard Sounds disabled, merely pressing Tab, arrows, Home, End or Page Up/Down does not make
+a keypress sound. Keyboard Sounds uses exactly one assigned WAV for each physical key, with NO random playback.</p>
+<p>Settings now has one <strong>Manage sound themes</strong> button opening Navigation, Typing and Keyboard Sounds tabs,
+and one <strong>Open sound folders</strong> button for the three directories. In the keyboard theme editor,
+focus the <strong>Capture and preview a physical key</strong> field and press a key to select its event and
+immediately preview any assigned WAV. Outside that field, Tab and Escape retain normal dialog behavior.
+Use <strong>Replace WAV</strong> to choose any PCM WAV from your computer: its filename is automatically
+changed to the canonical key name, e.g. <code>keyboard.f7.wav</code>.</p>
+<p>Keyboard packs live in <code>globalPlugins/soundThemes/effects/keyboard/&lt;pack&gt;/</code>
+or <code>soundThemes/effects/keyboard/&lt;pack&gt;/</code> in NVDA's user configuration.
+The keyboard/voiceover pack has three original ScreenReaderSounds recordings (Backspace,
+End and Shift+Tab). Seven other original Kliq sound packs are included: Cherry, DSA,
+KAT, MT3, OEM, SA and XDA. The new-install keyboard theme defaults to KAT.
+Unrecorded special keys use an original, non-random sound from the SAME keyboard pack;
+personal themes without a fallback remain silent for missing keys.</p>
+<p>Original ScreenReaderSounds audio has NOW been imported from the 17 MB WAV-bearing ZIP, including
+its inner <code>objdata.zip</code> role sounds and three OGGs decoded to real WAV. The integrated add-on
+contains 510 actual WAV recordings across navigation, typing and keyboard; none are synthetic.
+Key-release sounds are not installed because this add-on only plays key-down sounds.
+Explorer selected items now play their genuine listitem/treeviewitem sounds, and
+rapid focus changes cancel stale buffered audio so cues follow the current item.
+Some hardware Fn/brightness keys are not visible to NVDA and cannot be guaranteed.
+See <code>KEYBOARD_SOUNDS_GUIDE.md</code> and <code>PROJECT_STATUS.md</code> in the source distribution.</p>
+<h2>Using and editing sound themes</h2>
+<p>Customize sound effects for focus, typing, navigation, object roles and states,
+Windows lock and unlock, plus many other NVDA events.</p>
+<h2>Set up</h2>
+<ol><li>After installing the add-on, restart NVDA.</li>
+<li>Open NVDA menu, Preferences, Settings, Sound Themes.</li>
+<li>Select navigation and typing sound themes independently, then customize volume and event options.</li>
+<li>Choose Manage sound themes and then its Navigation or Typing tab. Copy a built-in theme to edit it,
+then assign WAV files to individual events using the keyboard-friendly event list. Each manager lists
+only that kind of sound event. You may add multiple variations to one event; randomized typing
+plays WAV files only from the currently selected typing theme.</li></ol>
+<h2>Sound folders</h2>
+<p>Included sound packs reside in
+<code>globalPlugins/soundThemes/effects/navigation/</code> and
+<code>globalPlugins/soundThemes/effects/typing/</code>.
+Each pack folder contains WAV files directly, with no <code>theme.json</code> or manifest.
+For example, <code>role.button.wav</code>, <code>key.tab.wav</code>,
+<code>system.lock.wav</code>, and <code>system.secure_enter.wav</code> identify events.
+Files named <code>key.character.wav</code> and <code>key.character__1.wav</code>
+provide random typing variations, drawn exclusively from the active typing pack.
+The included real navigation pack is <code>navigation/voiceover</code> with 15 original role sounds;
+the real typing pack is <code>typing/classic-typewriter</code> with six original WAV variations.
+The earlier code-only ZIP did not include audio; a newer genuine sound-bearing ScreenReaderSounds ZIP
+has since been imported, as described above. No synthesized WAVs are bundled.
+Custom packs use <code>soundThemes/effects/navigation/</code> and
+<code>soundThemes/effects/typing/</code> under the NVDA user configuration directory.
+Existing v0.1.0 personal themes are copied into the two new categories without removing the original files.
+Personal v0.2.0 packs are converted with backups of the original folders.</p>
+<h2>Shortcuts</h2>
+<ul><li>NVDA+Alt+N: toggle navigation effects, twice to toggle typing effects.</li>
+<li>NVDA+Alt+O: toggle all sound effects.</li>
+<li>NVDA+Alt+Z and NVDA+Alt+X: cycle between navigation themes only.</li></ul>
+<h2>Notes</h2>
+<p>Import old WAV folders to migrate ScreenReaderSounds-style filenames and role sound files.
+Custom themes are stored under the NVDA configuration path and survive add-on updates.
+Use PCM WAV audio. Lock and unlock effects use NVDA's session-state events; secure-desktop transitions
+use a separate listener when the running NVDA version provides one. Keyboard context is captured
+through NVDA's existing raw-key hook, retaining the useful pressed-key tracking provided by the old
+<code>k</code> library without installing an additional global keyboard hook.
+Running any add-on on Windows secure screens must be explicitly permitted through NVDA's
+system-wide configuration feature and entails security risks.</p>
+<p>This preview has passed the offline regression suite but has not been verified end-to-end on Windows NVDA 2026.
+The first 21 WAVs came from the original navSounds publisher; the new audio-bearing ScreenReaderSounds ZIP
+provided the additional recordings, and seven Kliq themes were supplied by the user.
+The packaged total is now 510 original WAVs. Kliq recordings are MIT licensed;
+the notice is included as doc/KLIQ_LICENSE.txt. See SOUND_SOURCES.md in the source distribution.</p>
+</body></html>

@@ -1,0 +1,35 @@
+name: Test and package Sound Themes for NVDA
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout complete source and real sound packs
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run independent regression tests
+        run: python -B -m unittest discover -s tests -q
+      - name: Build NVDA installer
+        run: python scripts/build.py
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: soundThemes-nvda-addon
+          path: SoundThemesForNVDA-*.nvda-addon
+          if-no-files-found: error
+      - name: Publish version-tagged GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" SoundThemesForNVDA-*.nvda-addon --generate-notes --verify-tag
