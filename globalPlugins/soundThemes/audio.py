@@ -186,8 +186,8 @@ class AudioEngine:
 
     def reload(self, navigation_store, navigation_id: str, typing_store, typing_id: str, volume: int,
                keyboard_store=None, keyboard_id: str = ""):
-        self._sounds = self._load_bank(navigation_store, navigation_id, volume)
-        self._typing_sounds = self._load_bank(typing_store, typing_id, volume)
+        self._sounds = self._load_bank(navigation_store, navigation_id, volume) if navigation_id else {}
+        self._typing_sounds = self._load_bank(typing_store, typing_id, volume) if typing_id else {}
         self._keyboard_sounds = (self._load_bank(keyboard_store, keyboard_id, volume)
                                  if keyboard_store is not None and keyboard_id else {})
 

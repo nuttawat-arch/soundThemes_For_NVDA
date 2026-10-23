@@ -1,4 +1,11 @@
-# Original add-ons → Sound Themes for NVDA 0.10.0
+# Original add-ons → Sound Themes for NVDA 0.11.0
+
+## v0.11.0 typing completeness and removable presets
+
+- Audited all **13 bundled typing packs** for Enter/Space/Backspace. Every pack contains genuine `key.character` audio, but **11 lack a distinct Enter WAV, 4 lack a distinct Space WAV, and 5 lack a distinct Backspace WAV**. The missing dedicated samples were **not supplied**; they have not been fabricated or reported as independently imported.
+- Raw-key listener triggers `key.enter`, `key.space`, `key.backspace` (also Delete) on the first physical press **only in focused editable controls** while Typing Sounds is active. Matching later NVDA `event_typedCharacter` callbacks within 500 ms are consumed once. A dedicated WAV wins; a missing event falls back to a genuine `key.character` WAV in the selected pack. Both `ThemeStore` lookups and engine playback use identical candidate event rules.
+- Removed the obsolete **Import old sounds folder** UI button. Every built-in preset can now be removed from the list; per-category JSON tombstones are stored in writable NVDA config so add-on upgrades do not silently restore deleted selections. Restoration is explicit via the manager. Deleting personal themes removes their folder. Zero themes in a category is valid; no forced empty default is created. Built-in editing and renaming remain read-only; copy to a personal theme to edit.
+- Expanded offline regressions from 42 to **46 tests**. Live NVDA/Windows keyboard-hook behavior and wx accessibility remain pending acceptance tests.
 
 ## v0.10.0 speech-pause/Shift audit and event accessibility
 

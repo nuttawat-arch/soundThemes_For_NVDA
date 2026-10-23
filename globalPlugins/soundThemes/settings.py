@@ -226,7 +226,8 @@ class ThemeManagerPage(wx.Panel):
         self.setting_key = {"navigation": "theme", "typing": "typingTheme",
                             "keyboard": "keyboardTheme"}[kind]
         main = wx.BoxSizer(wx.VERTICAL)
-        main.Add(wx.StaticText(self, label=_("Sound themes (built-in themes are read-only):")),
+        main.Add(wx.StaticText(self, label=_(
+            "Sound themes (all presets can be removed; copy built-in themes to edit):")),
                  0, wx.ALL, 8)
         self.theme_list = wx.ListBox(self, style=wx.LB_SINGLE)
         self.theme_list.SetName(_("Available sound themes"))
@@ -239,7 +240,7 @@ class ThemeManagerPage(wx.Panel):
             (_("Re&name..."), self.rename),
             (_("&Delete..."), self.delete),
             (_("Import theme &ZIP..."), self.import_zip),
-            (_("Import old sounds &folder..."), self.import_legacy),
+            (_("&Restore removed presets..."), self.restore_builtin),
             (_("E&xport theme ZIP..."), self.export),
             (_("&Use this theme"), self.activate),
         )
@@ -331,19 +332,40 @@ class ThemeManagerPage(wx.Panel):
         identifier = self._act(self.selected)
         if not identifier:
             return
-        if identifier.startswith("builtin:"):
-            explain_error(self, _("Built-in themes cannot be removed"))
-            return
-        if wx.MessageBox(_("Delete this theme permanently?"), _("Confirm deletion"),
+        prompt = (_("Remove this built-in preset from your list? You can restore it later.")
+                  if identifier.startswith("builtin:")
+                  else _("Delete this personal theme permanently?"))
+        if wx.MessageBox(prompt, _("Confirm deletion"),
                          wx.YES_NO | wx.NO_DEFAULT | wx.ICON_WARNING, self) == wx.YES:
-            self._act(lambda: self.store.delete(identifier))
+            done = self._act(lambda: (self.store.delete(identifier), True)[1])
+            if not done:
+                return
             if self.plugin.setting(self.setting_key) == identifier:
                 import config
                 from . import SECTION
                 remaining = self.store.themes()
                 config.conf[SECTION][self.setting_key] = remaining[0][0] if remaining else ""
-                self.plugin.reload_sounds()
+            self.plugin.reload_sounds()
             self.refresh(self.plugin.setting(self.setting_key))
+
+    def restore_builtin(self, evt):
+        options = self.store.removed_builtins()
+        if not options:
+            wx.MessageBox(_("No removed built-in presets to restore."),
+                          _("Restore presets"), parent=self)
+            return
+        dialog = wx.SingleChoiceDialog(self, _("Choose a preset to restore:"),
+                                       _("Restore presets"), [name for _, name in options])
+        try:
+            if dialog.ShowModal() != wx.ID_OK:
+                return
+            identifier = options[dialog.GetSelection()][0]
+        finally:
+            dialog.Destroy()
+        done = self._act(lambda: (self.store.restore_builtin(identifier), True)[1])
+        if done:
+            self.plugin.reload_sounds()
+            self.refresh(identifier)
 
     def import_zip(self, evt):
         with wx.FileDialog(self, _("Import theme ZIP"), wildcard="ZIP files (*.zip)|*.zip",
@@ -354,17 +376,6 @@ class ThemeManagerPage(wx.Panel):
         name = ask_name(self, _("Name imported theme"), source.stem)
         if name:
             new = self._act(lambda: self.store.import_zip(source, name))
-            if new:
-                self.refresh(new)
-
-    def import_legacy(self, evt):
-        with wx.DirDialog(self, _("Choose a folder with old WAV sound files")) as dialog:
-            if dialog.ShowModal() != wx.ID_OK:
-                return
-            folder = Path(dialog.GetPath())
-        name = ask_name(self, _("Name imported theme"), folder.name)
-        if name:
-            new = self._act(lambda: self.store.import_legacy_folder(folder, name, Role, State))
             if new:
                 self.refresh(new)
 

@@ -1,4 +1,4 @@
-# Sound Themes for NVDA 0.10.0
+# Sound Themes for NVDA 0.11.0
 
 Maintainer: **Nuttawat Seecham** — nutblind2545t@gmail.com  
 Source and homepage: https://github.com/nuttawat-arch/soundThemes_For_NVDA
@@ -19,7 +19,9 @@ When Keyboard Sounds is off, simply pressing Tab, arrows, Home/End or Page Up/Do
 
 ## Accessible management
 
-Open NVDA menu → Preferences → Settings → **Sound Themes**. Select three active theme packs. The single **Manage sound themes...** button opens a dialog with **Navigation**, **Typing** and **Keyboard Sounds** tabs. Each has Create/Copy, Edit, Rename, Delete, Import ZIP, Import WAV folder, Export ZIP and Use This Theme. Built-in packs are read-only; edit first creates a personal copy. The single **Open sound folders** button opens the NVDA user effects root.
+Open NVDA menu → Preferences → Settings → **Sound Themes**. Select three active theme packs. The single **Manage sound themes...** button opens a dialog with **Navigation**, **Typing** and **Keyboard Sounds** tabs. Each has Create/Copy, Edit, Rename, Delete, Import ZIP, Restore removed presets, Export ZIP and Use This Theme. The old **Import old sounds folder...** button has been removed. Built-in packs are read-only for editing (copy to a personal theme first), **but every pack may be removed from the list, including built-ins**. The single **Open sound folders** button opens the NVDA user effects root.
+
+**New in 0.11: Enter, Space and Backspace typing coverage and unrestricted preset removal.** NVDA does not consistently send typed-character events for these keys in every editor. When Typing Sounds is enabled, the add-on now observes their first physical keydown **only while an editable text field is focused**, using NVDA's existing raw-key callback, and suppresses a matching later typed-character duplicate. Delete shares the Backspace typing sound. If the chosen typing pack has no separate `key.enter.wav`, `key.space.wav` or `key.backspace.wav`, the corresponding key plays a real `key.character.wav` sample from **that same pack**. Dedicated WAVs take precedence; empty packs stay silent. This is a playback fallback, **not an invented recording**: the 13 bundled typing packs do not all have dedicated recordings. Every built-in preset may be hidden persistently (including the last one) and restored through **Restore removed presets**; this preference survives add-on updates in NVDA user config. Personal theme deletion removes its files after confirmation. No preset is mandatory and no empty default is automatically created.
 
 **New in 0.8: hear each sound as you navigate.** Arrow through the Navigation, Typing or Keyboard theme chooser in NVDA Settings, or through the theme list in the manager, to audition a real representative WAV from that exact pack without activating it. The event editor likewise previews each assigned event when its list selection moves. A missing WAV stays silent; no modal message interrupts arrowing. Previews decode in a latest-only background worker, so rapidly changing the highlighted item does not block the dialog or play a backlog of outdated previews. All other audio playback continues through the existing polyphonic sound engine.
 
@@ -73,23 +75,23 @@ python scripts/build.py
 python scripts/build_source.py
 ```
 
-Run these commands **from the `soundThemes` source directory**. To reimport the newly supplied files in the developer workspace, run `python scripts/import_effects_archive.py ../upload/effects.zip` if the archive is present; it is *not* required at runtime or for GitHub builds because all selected original WAVs are included in source. Install `SoundThemesForNVDA-0.10.0.nvda-addon` using NVDA's add-on manager, restart NVDA, and disable old navSounds/ScreenReaderSounds or standalone keyboard-sound add-ons to avoid duplicate feedback. Existing selected `voiceover` remains active and gains 59 missing events; Navigation `default` can also be chosen. Try portable NVDA 2026 first: static Python tests outside Windows do **not** prove hardware event delivery, secure-desktop playback or accessible Windows wx dialogs.
+Run these commands **from the `soundThemes` source directory**. To reimport the newly supplied files in the developer workspace, run `python scripts/import_effects_archive.py ../upload/effects.zip` if the archive is present; it is *not* required at runtime or for GitHub builds because all selected original WAVs are included in source. Install `SoundThemesForNVDA-0.11.0.nvda-addon` using NVDA's add-on manager, restart NVDA, and disable old navSounds/ScreenReaderSounds or standalone keyboard-sound add-ons to avoid duplicate feedback. Existing selected `voiceover` remains active and gains 59 missing events; Navigation `default` can also be chosen. Try portable NVDA 2026 first: static Python tests outside Windows do **not** prove hardware event delivery, secure-desktop playback or accessible Windows wx dialogs.
 
 ## Publishing to GitHub and the NVDA Add-on Store
 
-Your `git push -u origin main` for commit `aec66da` completed successfully according to the provided PowerShell output. The LF→CRLF warnings are normal Git line-ending notices, not a failed upload. Unpack the **v0.10.0 source** ZIP, then copy the contents of its `soundThemes` folder (including `manifest.ini`, `globalPlugins/`, `doc/`, `.github/` and this `README.md`) into the **existing** GitHub repository folder. Do not `git init`, clone a second time, or add `origin` again.
+Your `git push origin main` for commit `d51a169` and `git push origin v0.10.0` **both completed successfully**, according to your PowerShell transcript. The LF→CRLF warnings are normal Git line-ending notices, not failed uploads. Unpack the **v0.11.0 source** ZIP, then copy the contents of its `soundThemes` folder (including `manifest.ini`, `globalPlugins/`, `doc/`, `.github/` and this `README.md`) into the **existing** GitHub repository folder. Do not `git init`, clone a second time, re-add `origin` or reuse the old tag.
 
 ```powershell
 cd D:\NVDA\soundThemes
 git pull --ff-only origin main
-# Now copy all files from inside the extracted v0.10.0 soundThemes folder here.
+# Now copy all files from inside the extracted v0.11.0 soundThemes folder here.
 git add -A
-git -c user.name="Nuttawat Seecham" -c user.email="nutblind2545t@gmail.com" commit -m "Release Sound Themes for NVDA 0.10.0: speech pause and event descriptions"
-git push -u origin main
-git tag v0.10.0
-git push origin v0.10.0
+git -c user.name="Nuttawat Seecham" -c user.email="nutblind2545t@gmail.com" commit -m "Release Sound Themes for NVDA 0.11.0: typing keys and preset removal"
+git push origin main
+git tag v0.11.0
+git push origin v0.11.0
 ```
 
-On `main` pushes, the included GitHub Actions workflow runs tests and packages a downloadable artifact. Pushing the **new** `v0.10.0` tag creates a separate GitHub Release with the actual `.nvda-addon` installer. The release appears only once its GitHub Actions workflow succeeds. GitHub authentication may be required (e.g. Git Credential Manager). The add-on homepage is provided by `url` in `manifest.ini`, which is the same as the required **homepage** field when publishing to the NVDA Add-on Store. Creating a GitHub repository/release does not automatically add the add-on to NVDA's Store: submit its **direct GitHub Release asset download URL** using the [official NVDA Add-on Store submission guide](https://github.com/nvaccess/addon-datastore/blob/master/docs/submitters/submissionGuide.md) and complete the review/validation process.
+On `main` pushes, the included GitHub Actions workflow runs tests and packages a downloadable artifact. Pushing the **new** `v0.11.0` tag creates a separate GitHub Release with the actual `.nvda-addon` installer. The release appears only once its GitHub Actions workflow succeeds. GitHub authentication may be required (e.g. Git Credential Manager). The add-on homepage is provided by `url` in `manifest.ini`, which is the same as the required **homepage** field when publishing to the NVDA Add-on Store. Creating a GitHub repository/release does not automatically add the add-on to NVDA's Store: submit its **direct GitHub Release asset download URL** using the [official NVDA Add-on Store submission guide](https://github.com/nvaccess/addon-datastore/blob/master/docs/submitters/submissionGuide.md) and complete the review/validation process.
 
 Sources: [navSounds](https://github.com/ahmedthebest31/navsounds), [official navSounds sound store](https://ahmedthebest31.github.io/navsounds/store/), ScreenReaderSounds files provided by the user, [Kliq (MIT; sound recordings by Cris)](https://github.com/crafter-station/kliq), [NVDA developer documentation](https://download.nvaccess.org/documentation/developerGuide.html). See `doc/KLIQ_LICENSE.txt`.

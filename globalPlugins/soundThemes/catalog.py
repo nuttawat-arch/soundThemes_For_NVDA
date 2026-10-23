@@ -378,6 +378,11 @@ def legacy_event_for_filename(stem: str, role_names=(), state_names=()) -> str |
 
 def candidates(event_key: str) -> tuple[str, ...]:
     """Choose an exact binding first; then cover unknown future NVDA roles/states."""
+    if event_key in ("key.space", "key.backspace", "key.enter", "key.protected"):
+        # Most source typing themes ship a general key recording but not a
+        # separate Enter/Space/Backspace take. Never borrow from another pack,
+        # synthesize a sound or mask a genuine dedicated recording.
+        return (event_key, "key.character")
     if event_key == "keyboard.shift_tab":
         return (event_key, "keyboard.tab", "keyboard.default")
     if event_key.startswith("keyboard.") and event_key != "keyboard.default":

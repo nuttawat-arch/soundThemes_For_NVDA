@@ -1,4 +1,15 @@
-# Sound Themes for NVDA — Project status v0.10.0 (2026-10-24)
+# Sound Themes for NVDA — Project status v0.11.0 (2026-10-24)
+
+## Completed in v0.11.0
+
+- Inspected all **13 bundled typing packs** plus the source `effects.zip`. Every typing pack has a genuine character recording; **11 lack a distinct Enter recording, 4 lack Space, and 5 lack Backspace**. The source archive itself does not include separate WAVs for each missing key. Added same-pack genuine `key.character` fallback for `key.enter`, `key.space`, `key.backspace` and protected typing, preserving a distinct sample when present; no new audio synthesized or bundled.
+- Added first-physical-keydown handling for Enter, Space, Backspace and Delete while **Typing Sounds** is enabled and a writable edit field has focus, independent of whether NVDA emits a typed-character callback. A following matching typed-character callback within 500 ms does not create an extra click. Keyboard Sounds mode continues to use its own physical key mappings without duplicate typing playback.
+- Removed **Import old sounds folder...** button from the manager. Every preset, including bundled presets and the last one in a category, can now be deleted/removed. Bundled presets use durable user-config per-category removal records (`removed-navigation-presets.json`, etc.) so NVDA updates do not undo the choice. Users can explicitly restore removed built-ins using a separate button. Personal packs can still be deleted physically. Removed forced creation of an empty keyboard default pack, and the engine accepts an empty sound bank.
+- Updated accessible English/Thai help, guides, README, event audit and version `0.11.0`; regression tests expanded to **46**, all passing. The user's transcript confirms the previous v0.10.0 commit (`d51a169`), `main` push and `v0.10.0` tag push succeeded.
+
+## v0.11.0 verification and remaining work
+
+- **46/46 offline tests passed** (including exact-vs-fallback events, built-in removal/restart/restore, empty preset categories, duplicate special-key prevention and previous regression checks). Built `SoundThemesForNVDA-0.11.0.nvda-addon` and `SoundThemesForNVDA-source-0.11.0.zip`; **both ZIP integrity checks passed**, the installer manifest declares `0.11.0`, and **all 706 genuine WAVs** remain. Cannot run interactive Windows NVDA inside Linux: hardware key event delivery, edit-control focus detection, wx dialog usability, installer behavior and GitHub Actions Release remain pending real NVDA / GitHub verification. 706 WAVs do not imply 706 unique dedicated events.
 
 ## Completed in v0.10.0
 

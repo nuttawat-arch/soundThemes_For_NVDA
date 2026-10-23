@@ -1,6 +1,9 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>Sound Themes for NVDA</title></head>
 <body><h1>Sound Themes for NVDA</h1>
+<h2>Version 0.11.0: More complete typing sounds and removable presets</h2>
+<p>When Typing Sounds is enabled, Enter, Space, Backspace and Delete are now detected on their first physical keydown in a focused editable text control, even when NVDA does not report them through its typed-character event. A matching later event is suppressed to avoid hearing two clicks. Each selected typing pack uses its own distinct Enter/Space/Backspace WAV if provided; otherwise it plays a real character-typing WAV from the same pack. The 13 built-in typing packs do not all contain separate recordings: 11 lack a dedicated Enter, four lack Space and five lack Backspace. No synthetic recordings were added. Keyboard Sounds mode retains its separate physical-key assignments.</p>
+<p>The <strong>Import old sounds folder...</strong> button has been removed. In <strong>Manage sound themes</strong>, every preset can now be removed, including all bundled presets and the last item in any category. Removing a bundled preset hides it persistently across add-on updates and can be undone through <strong>Restore removed presets...</strong>; deleting a personal pack deletes its files after confirmation. Built-in packs may still be copied to edit their WAVs. No theme is compulsory and no empty default theme is generated.</p>
 <h2>Version 0.10.0: Fix the unwanted Shift speech-pause sound; explain every event</h2>
 <p>NVDA sends a speech-pause notification when Shift pauses speech. The previous add-on responded by playing the separate <strong>Speech feedback paused</strong> recording, even if Navigation sounds were disabled, because it was a System sound. That is why Shift could sound twice. <strong>Play speech-pause feedback</strong> is now off by default and physical Shift presses are excluded even if you enable it. Your assigned physical Shift key sound still works when Keyboard Sounds is on. The paused-feedback WAV remains available for manual preview and reassignment.</p>
 <p>Inside <strong>Edit sounds</strong>, arrow through an event to preview its recording. An accessible <strong>Description of selected sound event</strong> text box explains when the event happens, with examples such as a file in File Explorer, a folder tree, a browser tab or an NVDA speech event. The <strong>Speak the event description when moving through the list</strong> option is enabled by default; the description is read after a brief pause and superseded descriptions are cancelled when you move quickly. Tab to the read-only text box to read it in full. Names in the list remain short, so typing C still jumps to a C item. Some legacy sounds have no reliable automatic NVDA trigger; descriptions identify these explicitly.</p>
@@ -72,7 +75,7 @@ Personal v0.2.0 packs are converted with backups of the original folders.</p>
 <li>NVDA+Alt+O: toggle all sound effects.</li>
 <li>NVDA+Alt+Z and NVDA+Alt+X: cycle between navigation themes only.</li></ul>
 <h2>Notes</h2>
-<p>Import old WAV folders to migrate ScreenReaderSounds-style filenames and role sound files.
+<p>The old folder-import button was removed; use <strong>Import theme ZIP</strong> or select <strong>Replace WAV</strong> to set sound files in a personal pack.
 Custom themes are stored under the NVDA configuration path and survive add-on updates.
 Use PCM WAV audio. Lock and unlock effects use NVDA's session-state events; secure-desktop transitions
 use a separate listener when the running NVDA version provides one. Keyboard context is captured

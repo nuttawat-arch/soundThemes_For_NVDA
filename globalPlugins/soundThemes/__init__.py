@@ -93,7 +93,6 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         self.navigation_store = ThemeStore(asset_root / "navigation", user_root / "navigation", "navigation")
         self.typing_store = ThemeStore(asset_root / "typing", user_root / "typing", "typing")
         self.keyboard_store = ThemeStore(asset_root / "keyboard", user_root / "keyboard", "keyboard")
-        self._ensure_keyboard_theme()
         if self.setting("keyboard"):
             # Guard settings migrated from older versions and manually edited configs.
             config.conf[SECTION]["navigation"] = False
@@ -159,15 +158,6 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         except (ImportError, OSError, ValueError) as error:
             log.warning("Sound Themes: legacy theme migration skipped: %s", error)
 
-    def _ensure_keyboard_theme(self):
-        """Create an intentionally silent, editable starter pack; never synthesize audio."""
-        try:
-            import NVDAState
-            if NVDAState.shouldWriteToDisk and not self.keyboard_store.themes():
-                self.keyboard_store.create("Default")
-        except (ImportError, OSError, ValueError) as error:
-            log.warning("Sound Themes: unable to create keyboard sound folder: %s", error)
-
     def _migrate_manifest_themes(self):
         try:
             import NVDAState
@@ -185,19 +175,20 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         names = self.navigation_store.themes()
         current = self.setting("theme")
         ids = [identifier for identifier, _ in names]
-        if current not in ids and names:
-            current = names[0][0]
+        if current not in ids:
+            current = ids[0] if ids else ""
             config.conf[SECTION]["theme"] = current
         typing_names = self.typing_store.themes()
         typing_ids = [identifier for identifier, _ in typing_names]
         typing_theme = self.setting("typingTheme")
-        if typing_theme not in typing_ids and typing_names:
-            typing_theme = typing_names[0][0]
+        if typing_theme not in typing_ids:
+            typing_theme = typing_ids[0] if typing_ids else ""
             config.conf[SECTION]["typingTheme"] = typing_theme
         keyboard_names = self.keyboard_store.themes()
         keyboard_theme = self.setting("keyboardTheme")
-        if keyboard_theme not in [identifier for identifier, _ in keyboard_names] and keyboard_names:
-            keyboard_theme = keyboard_names[0][0]
+        keyboard_ids = [identifier for identifier, _ in keyboard_names]
+        if keyboard_theme not in keyboard_ids:
+            keyboard_theme = keyboard_ids[0] if keyboard_ids else ""
             config.conf[SECTION]["keyboardTheme"] = keyboard_theme
         self.audio.reload(self.navigation_store, current,
                           self.typing_store, typing_theme, self.setting("volume"),
@@ -255,6 +246,20 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 # The audio engine only queues cached bytes. Scheduling via
                 # wx.CallAfter needlessly delays fast keyboard feedback.
                 self.play_event(event, .018)
+            elif first and not self._closed and self.setting("typing"):
+                # NVDA doesn't reliably emit typedCharacter for Return,
+                # Backspace, Delete or Space in every editable application.
+                # Listen to the existing raw hook only for these four keys
+                # and only when an actual editable field has focus.
+                special = {0x0D: "key.enter", 0x08: "key.backspace",
+                           0x2E: "key.backspace", 0x20: "key.space"}.get(physical_vk)
+                if special:
+                    obj = self._focused_editable()
+                    if obj is not None:
+                        if State.PROTECTED in (getattr(obj, "states", ()) or ()):
+                            special = "key.protected"
+                        self.keys.note_typing_special(special)
+                        self.play_event(special, .018)
         except Exception:
             pass
         return True
@@ -262,15 +267,21 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
     def _typing_allowed(self, obj=None):
         if not self.setting("onlyEditable"):
             return True
+        return self._focused_editable(obj) is not None
+
+    def _focused_editable(self, obj=None):
+        """Only real editable controls may receive raw typing key sounds."""
         if obj is None:
             try:
                 import api
                 obj = api.getFocusObject()
             except Exception:
-                return False
+                return None
         states = getattr(obj, "states", ()) or ()
-        return (State.READONLY not in states and
-                (State.EDITABLE in states or getattr(obj, "role", None) == Role.EDITABLETEXT))
+        if (State.READONLY not in states and
+                (State.EDITABLE in states or getattr(obj, "role", None) == Role.EDITABLETEXT)):
+            return obj
+        return None
 
     def _error_sound(self, *args, **kwargs):
         self.play_event("system.error", 0)
@@ -428,7 +439,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                     event = "key.enter"
                 else:
                     event = "key.character"
-                self.play_event(event, .035)
+                if not self.keys.consume_typing_special(event):
+                    self.play_event(event, .035)
         except Exception:
             pass
         finally:

@@ -120,6 +120,55 @@ class ThemeStore:
         self.writable = Path(writable)
         self.kind = kind
 
+    @property
+    def _removed_presets_file(self) -> Path:
+        # Keep the deletion choices outside installed add-on directories and
+        # outside individual WAV-only pack folders, so NVDA updates cannot
+        # restore a preset the user deliberately removed from their list.
+        return self.writable.parent / f"removed-{self.kind}-presets.json"
+
+    def _removed_presets(self) -> set[str]:
+        try:
+            value = json.loads(self._removed_presets_file.read_text(encoding="utf-8"))
+            if isinstance(value, list):
+                removed = set()
+                for name in value:
+                    if isinstance(name, str):
+                        try:
+                            if safe_slug(name) == name:
+                                removed.add(name)
+                        except ValueError:
+                            continue
+                return removed
+        except (OSError, ValueError, TypeError):
+            pass
+        return set()
+
+    def _save_removed_presets(self, removed: set[str]):
+        target = self._removed_presets_file
+        target.parent.mkdir(parents=True, exist_ok=True)
+        temp = target.with_suffix(".tmp")
+        temp.write_text(json.dumps(sorted(removed), ensure_ascii=False), encoding="utf-8")
+        temp.replace(target)
+
+    def removed_builtins(self) -> list[tuple[str, str]]:
+        """Restorable preset names from the installed archive, if any."""
+        return [(f"builtin:{slug}", slug.replace("-", " ").title())
+                for slug in sorted(self._removed_presets())
+                if (self.packaged / slug).is_dir()]
+
+    def restore_builtin(self, theme_id: str):
+        if not theme_id.startswith("builtin:"):
+            raise ValueError("Only bundled presets can be restored")
+        source, slug = theme_id.split(":", 1)
+        if safe_slug(slug) != slug or not (self.packaged / slug).is_dir():
+            raise FileNotFoundError("Built-in preset is unavailable")
+        removed = self._removed_presets()
+        if slug not in removed:
+            raise ValueError("Preset has not been removed")
+        removed.remove(slug)
+        self._save_removed_presets(removed)
+
     def accepts(self, event: str) -> bool:
         if self.kind == "mixed":
             return True
@@ -131,11 +180,13 @@ class ThemeStore:
 
     def themes(self) -> list[tuple[str, str]]:
         result = []
+        removed = self._removed_presets()
         for prefix, base in (("builtin", self.packaged), ("user", self.writable)):
             if not base.is_dir():
                 continue
             for folder in sorted(base.iterdir(), key=lambda p: p.name.casefold()):
-                if folder.is_dir() and not folder.name.startswith("."):
+                if (folder.is_dir() and not folder.name.startswith(".") and
+                        not (prefix == "builtin" and folder.name in removed)):
                     result.append((f"{prefix}:{folder.name}", folder.name.replace("-", " ").title()))
         return result
 
@@ -145,6 +196,8 @@ class ThemeStore:
         source, slug = theme_id.split(":", 1)
         if source not in ("builtin", "user") or safe_slug(slug) != slug:
             raise ValueError("Invalid sound pack identifier")
+        if source == "builtin" and slug in self._removed_presets():
+            raise FileNotFoundError("This built-in sound preset was removed")
         return (self.packaged if source == "builtin" else self.writable) / slug
 
     def _read_sound_map(self, folder: Path) -> dict[str, list[str]]:
@@ -239,10 +292,13 @@ class ThemeStore:
         return destination_id
 
     def delete(self, theme_id: str):
-        if not theme_id.startswith("user:"):
-            raise PermissionError("Built-in sound packs cannot be deleted")
         self.load(theme_id)
-        shutil.rmtree(self.directory(theme_id))
+        if theme_id.startswith("builtin:"):
+            removed = self._removed_presets()
+            removed.add(theme_id.split(":", 1)[1])
+            self._save_removed_presets(removed)
+        else:
+            shutil.rmtree(self.directory(theme_id))
 
     def _unused(self, folder: Path, name: str):
         target = folder / "_unused"

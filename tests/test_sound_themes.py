@@ -96,6 +96,65 @@ class SoundThemeTests(unittest.TestCase):
         self.nav.delete(renamed)
         self.assertFalse(self.nav.directory(renamed).exists())
 
+    def test_any_builtin_preset_can_be_deleted_and_restored_without_erasing_installer_audio(self):
+        builtin = self.nav.packaged / "balanced"
+        self.assertIn("builtin:balanced", dict(self.nav.themes()))
+        self.nav.delete("builtin:balanced")
+        self.assertTrue((builtin / "role.default.wav").exists())
+        self.assertNotIn("builtin:balanced", dict(self.nav.themes()))
+        with self.assertRaises(FileNotFoundError):
+            self.nav.load("builtin:balanced")
+        self.assertEqual(self.nav.removed_builtins(), [("builtin:balanced", "Balanced")])
+        # User preference must survive restarting the plugin and any update
+        # replacing the read-only installed sound pack.
+        restarted = packs.ThemeStore(self.nav.packaged, self.nav.writable, "navigation")
+        self.assertEqual(restarted.themes(), [])
+        restarted.restore_builtin("builtin:balanced")
+        self.assertIn("builtin:balanced", dict(restarted.themes()))
+        self.assertEqual(restarted.removed_builtins(), [])
+        restarted.delete("builtin:balanced")
+        self.assertEqual(restarted.themes(), [])  # never create a forced default
+
+    def test_deleted_preset_is_scoped_to_its_category_and_custom_names_remain_usable(self):
+        (self.typing.packaged / "balanced").mkdir(parents=True)
+        make_wav(self.typing.packaged / "balanced" / "key.character.wav")
+        self.nav.delete("builtin:balanced")
+        self.assertIn("builtin:balanced", dict(self.typing.themes()))
+        self.assertTrue(self.nav.create("Balanced").startswith("user:"))
+        self.assertIn("user:balanced", dict(self.nav.themes()))
+
+    def test_typing_key_fallback_prefers_exact_recording_in_same_pack(self):
+        for event in ("key.enter", "key.space", "key.backspace", "key.protected"):
+            self.assertEqual(catalog.candidates(event), (event, "key.character"))
+        theme = self.typing.create("Sparse Typing")
+        self.typing.assign(theme, "key.character", self.sample)
+        for event in ("key.enter", "key.space", "key.backspace"):
+            self.assertEqual(self.typing.sound_for(theme, event).name, "key.character.wav")
+        dedicated = self.home / "dedicated.wav"
+        make_wav(dedicated)
+        self.typing.assign(theme, "key.enter", dedicated)
+        self.assertEqual(self.typing.sound_for(theme, "key.enter").name, "key.enter.wav")
+        self.assertEqual(self.typing.sound_for(theme, "key.space").name, "key.character.wav")
+        self.assertIsNone(self.nav.sound_for("builtin:balanced", "key.enter"))
+
+    def test_raw_special_typing_is_not_doubled_by_later_nvda_typed_character(self):
+        keys = keys_module.KeyboardState()
+        keys.note_typing_special("key.space")
+        self.assertFalse(keys.consume_typing_special("key.enter"))
+        self.assertTrue(keys.consume_typing_special("key.space"))
+        self.assertFalse(keys.consume_typing_special("key.space"))
+        keys.note_typing_special("key.backspace")
+        keys.clear()
+        self.assertFalse(keys.consume_typing_special("key.backspace"))
+        plugin = (PACKAGE_ROOT / "__init__.py").read_text(encoding="utf-8")
+        self.assertIn("self._focused_editable()", plugin)
+        self.assertIn("self.keys.note_typing_special(special)", plugin)
+        self.assertIn("self.keys.consume_typing_special(event)", plugin)
+        self.assertNotIn("self._ensure_keyboard_theme()", plugin)
+        ui_source = (PACKAGE_ROOT / "settings.py").read_text(encoding="utf-8")
+        self.assertNotIn("Import old sounds &folder", ui_source)
+        self.assertIn("Restore removed presets", ui_source)
+
     def test_import_export_wav_only(self):
         origin = self.nav.create("For Export", "builtin:balanced")
         zip_path = self.home / "export.zip"

@@ -42,6 +42,7 @@ class KeyboardState:
         self._pressed = set()
         self._last_navigation_press = 0.0
         self._last_shift_press = 0.0
+        self._last_typing_special = {}
         self._lock = RLock()
 
     def update(self, vk: int, down: bool) -> bool:
@@ -79,6 +80,18 @@ class KeyboardState:
             self._pressed.clear()
             self._last_navigation_press = 0.0
             self._last_shift_press = 0.0
+            self._last_typing_special.clear()
+
+    def note_typing_special(self, event: str):
+        """Remember a raw-key cue to avoid replay on typedCharacter callback."""
+        with self._lock:
+            self._last_typing_special[event] = time.monotonic()
+
+    def consume_typing_special(self, event: str, max_age: float = 0.5) -> bool:
+        """Consume one recent matching raw-key cue, not unrelated typing."""
+        with self._lock:
+            at = self._last_typing_special.pop(event, None)
+            return at is not None and time.monotonic() - at <= max_age
 
     def shift_recent(self, max_age: float = 0.35) -> bool:
         """Detect NVDA's Shift-to-pause gesture even after the key is released."""

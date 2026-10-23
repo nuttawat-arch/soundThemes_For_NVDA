@@ -1,4 +1,6 @@
-# Sound Themes for NVDA — Keyboard Sounds (v0.10.0)
+# Sound Themes for NVDA — Keyboard Sounds (v0.11.0)
+
+Version 0.11.0: **Typing Sounds** can now play Enter, Space and Backspace/Delete on a physical keydown in focused editable fields even when NVDA does not emit a typed-character notification. Matching later notifications are suppressed to avoid doubling. Dedicated samples such as `key.enter.wav` are preferred; otherwise the pack's genuine `key.character.wav` is used (no synthetic audio and no mixing themes). This is Typing Sounds behavior, not the physical **Keyboard Sounds** category, which has its own `keyboard.enter.wav` and similar key events. All categories allow removal of every listed preset; built-in removal is persistent and reversible using **Restore removed presets**. The obsolete **Import old sounds folder** button is gone; import theme ZIPs or edit WAV events directly.
 
 Version 0.10.0 fixes a separate cause of the Shift double-sound: NVDA fires `post_speechPaused` when Shift pauses speech. Previous builds played `system.paused_feedback` in addition to the keyboard key sound, even with Navigation disabled. That speech cue is now off by default and always suppressed around a physical Shift press. It can be enabled for other speech-pause events using the independent **Play speech-pause feedback** checkbox. In the editor, each sound event has a screen-reader-readable explanation of its NVDA trigger and typical app context. Its short item label (for example `C`, `Shift`, `LISTITEM`) stays searchable with first-letter navigation.
 
