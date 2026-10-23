@@ -1,4 +1,17 @@
-# Sound Themes for NVDA — Project status v0.8.0 (2026-10-24)
+# Sound Themes for NVDA — Project status v0.9.0 (2026-10-24)
+
+## Completed in v0.9.0
+
+- Inspected the user's newly supplied `upload/effects.zip` (86 original navigation + 61 original typing PCM WAVs). Added deterministic, repeatable `scripts/import_effects_archive.py` with ZIP/WAV checks, original-byte copy, duplicate sample elimination and corrective mapping for incorrectly named old role/state events (`expended`, `invisibled`, `tablecoulmnheader`, `tableraw`).
+- The new built-in `navigation/default` theme contains 85 distinct event samples; two source editable-text names map to one event. Added **59 previously uncovered original sound events** to `navigation/voiceover` without replacing any source ScreenReaderSounds audio. Existing users selecting VoiceOver therefore get more event coverage immediately; both packs remain individually selectable and do not leak audio from one to the other.
+- Added eleven new typing themes from the uploaded archive and the genuine Classic Typewriter bell to the existing theme, respecting the original theme grouping. The bundle now contains **706 original PCM WAVs in 23 theme folders** under the sole packaged `globalPlugins/soundThemes/effects` root. Zero generated WAVs and zero `theme.json` files. Removed the leftover obsolete `scripts/generate_themes.py` that had mistakenly survived in the source tree.
+- Fixed possible double firing of Shift/Control/Alt if NVDA raw-key hooks deliver both generic and side-specific virtual-key aliases for the same physical press; normalize left/right Shift by scan code and Control/Alt by extended bit, then trigger only on the first pressed physical key transition. Preserve distinct left/right modifier detection and normal input pass-through.
+- Manifest and manuals updated to **0.9.0**. The user's PowerShell transcript confirms `git push -u origin main` succeeded for commit `aec66da`; however, GitHub Release `v0.9.0` must still be created by pushing this update and tag.
+
+## v0.9.0 verification and remaining work
+
+- **39/39** independent Python regression tests passed, including new event mapping, exact built-in source counts and physical Shift alias deduplication.
+- Must still verify keyboard hook data (including side-specific VK conventions), actual Windows Shift playback, and whether other NVDA/Windows keyboard sound add-ons generate one of the perceived sounds. These cannot be established solely from Linux offline tests. Unrecognized historical role IDs without current NVDA Role/State counterparts remain assignable but might not have automatic OS callbacks.
 
 ## Completed in v0.8.0
 

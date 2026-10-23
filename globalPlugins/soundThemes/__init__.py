@@ -75,6 +75,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         self._previous_role = None
         self._previous_app = None
         self._last_focus_cue = None
+        self._last_switch_states = {}
         self._hover_obj = None
         self._hover_timer = None
         self._lock_timer = None
@@ -240,11 +241,15 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         try:
             if kwargs.get("injected", False):
                 return True
-            first = self.keys.update(vkCode, pressed)
+            # De-duplicate generic Shift/Ctrl/Alt and their left/right VKs.
+            # One physical keydown must play ONE assigned sample, even when
+            # a keyboard driver reports both aliases to NVDA.
+            first, physical_vk = self.keys.update_physical(
+                vkCode, scanCode, extended, pressed,
+            )
             if first and not self._closed and self.setting("keyboard"):
-                event = event_for_virtual_key(vkCode, scanCode, extended)
-                if vkCode == 0x09 and (self.keys.is_pressed(0x10)
-                                        or self.keys.is_pressed(0xA0) or self.keys.is_pressed(0xA1)):
+                event = event_for_virtual_key(physical_vk, scanCode, extended)
+                if physical_vk == 0x09 and self.keys.is_pressed(0x10):
                     event = "keyboard.shift_tab"
                 # The audio engine only queues cached bytes. Scheduling via
                 # wx.CallAfter needlessly delays fast keyboard feedback.
@@ -477,7 +482,17 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
     def event_stateChange(self, obj, nextHandler):
         try:
             states = getattr(obj, "states", ()) or ()
-            if State.EXPANDED in states:
+            if getattr(obj, "role", None) == getattr(Role, "SWITCH", None):
+                key = (getattr(obj, "windowHandle", None),
+                       getattr(obj, "IAccessibleChildID", None), getattr(obj, "name", None))
+                on = getattr(State, "ON", None) in states
+                old = self._last_switch_states.get(key)
+                self._last_switch_states[key] = on
+                if len(self._last_switch_states) > 128:
+                    self._last_switch_states.pop(next(iter(self._last_switch_states)))
+                if old is None or old != on:
+                    self.play_event("state.on" if on else "state.off")
+            elif State.EXPANDED in states:
                 self.play_event("nav.expand")
             elif State.COLLAPSED in states:
                 self.play_event("nav.collapse")
@@ -605,6 +620,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 pass
         self._browse_monitor.terminate()
         self.keys.clear()
+        self._last_switch_states.clear()
         if self._role_speech_module is not None:
             if getattr(self._role_speech_module, "getPropertiesSpeech", None) is self._speech_wrapper:
                 self._role_speech_module.getPropertiesSpeech = self._speech_original

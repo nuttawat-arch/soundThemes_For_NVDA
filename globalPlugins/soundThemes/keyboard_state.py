@@ -19,6 +19,24 @@ NAV_KEYS = {
 MEDIA_KEYS = frozenset({0xAD, 0xAE, 0xAF, 0xB0, 0xB1, 0xB2, 0xB3})
 
 
+def physical_virtual_key(vk: int, scan_code: int | None = None,
+                         extended: bool = False) -> int:
+    """Collapse generic and side-specific modifier reports onto ONE physical key.
+
+    Some Windows keyboard drivers report both VK_SHIFT and VK_LSHIFT for a
+    single press. Otherwise the generic and side-specific bindings can each
+    play a separate WAV. Windows scan codes identify left/right Shift, while
+    the extended bit identifies right Control and Alt.
+    """
+    if vk == 0x10:
+        return 0xA1 if scan_code == 0x36 else 0xA0
+    if vk == 0x11:
+        return 0xA3 if extended else 0xA2
+    if vk == 0x12:
+        return 0xA5 if extended else 0xA4
+    return vk
+
+
 class KeyboardState:
     def __init__(self):
         self._pressed = set()
@@ -37,8 +55,20 @@ class KeyboardState:
                 self._pressed.discard(vk)
             return bool(down and first)
 
+    def update_physical(self, vk: int, scan_code: int | None,
+                        extended: bool, down: bool) -> tuple[bool, int]:
+        """Track raw key transitions under their side-specific physical code."""
+        physical = physical_virtual_key(vk, scan_code, extended)
+        return self.update(physical, down), physical
+
     def is_pressed(self, vk: int) -> bool:
         with self._lock:
+            if vk == 0x10:
+                return vk in self._pressed or 0xA0 in self._pressed or 0xA1 in self._pressed
+            if vk == 0x11:
+                return vk in self._pressed or 0xA2 in self._pressed or 0xA3 in self._pressed
+            if vk == 0x12:
+                return vk in self._pressed or 0xA4 in self._pressed or 0xA5 in self._pressed
             return vk in self._pressed
 
     def clear(self):

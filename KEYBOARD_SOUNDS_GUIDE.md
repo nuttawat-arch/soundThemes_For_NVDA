@@ -1,4 +1,6 @@
-# Sound Themes for NVDA — Keyboard Sounds (v0.8.0)
+# Sound Themes for NVDA — Keyboard Sounds (v0.9.0)
+
+Version 0.9.0: Windows sometimes exposes both a generic modifier key (such as VK_SHIFT) and its left/right form for the same physical press. The handler now normalizes them to one pressed key and one assigned WAV. This is particularly important for Shift, Control and Alt; it does not disable other keys or the ability to hold two physical modifiers together. If Shift still produces an extra sound, turn off independent keyboard/audio add-ons and Windows Sticky Keys notifications to isolate whether that sound is produced outside Sound Themes.
 
 New in 0.8.0: arrow through a keyboard theme (for example Cherry or KAT) in the settings choice or manager list to hear its representative recording instantly, without changing the active theme. The list says `Cherry`, not `Built-in: Cherry`, so typing `C` jumps to it. In the keyboard event editor, moving the selection auditions the current event; names `A` to `Z` and `0` to `9` start with those actual characters. Previews are decoded in the background and obsolete pending previews are discarded when navigating quickly. This does not change fixed, non-random in-game keyboard cues.
 
@@ -63,4 +65,4 @@ Important: The user-supplied `Sounds.zip` from Kliq **is now included in the rel
 
 ## Original ScreenReaderSounds files
 
-The user-provided 17 MB `ScreenReaderSounds.zip` was read in v0.5.0: original WAVs at the archive root, distinct role sounds in nested `objdata.zip`, and three actual OGG recordings. It yielded **54 distinct mapped events, including three separate keyboard events**; original OGGs were decoded offline into PCM WAV (not fabricated). Duplicate roles prefer the inner `objdata` recording. Adding Kliq now yields **510 actual WAV files total** across navigation, typing and keyboard, including the six original navSounds Classic Typewriter variations. The original add-ons' sound libraries are still limited by what was actually present in their source archives; specialized NVDA events cannot all be confirmed without Windows NVDA testing.
+The user-provided `ScreenReaderSounds.zip` was read in v0.5.0: original WAVs at the archive root, distinct role sounds in nested `objdata.zip`, and three actual OGG recordings. It yielded **54 distinct mapped events, including three separate keyboard events**; original OGGs were decoded offline into PCM WAV (not fabricated). Duplicate roles prefer the inner `objdata` recording. Version 0.9.0 also imports the user's new `effects.zip` WAVs for missing navigation events and typing packs: **706 real WAVs total** in the add-on, including the seven genuine Kliq per-key switch sets. Some uncommon NVDA/hardware events still require Windows testing.

@@ -1,6 +1,9 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>Sound Themes for NVDA</title></head>
 <body><h1>Sound Themes for NVDA</h1>
+<h2>Version 0.9.0: Complete original effects pack and single Shift cue</h2>
+<p>When Windows or a keyboard driver delivers both a generic Shift key and a left/right Shift code, Sound Themes treats these as one held physical key and plays a single assigned recording. Control and Alt aliases are treated the same way. This does not silence sounds from unrelated running add-ons or Windows itself.</p>
+<p>The newly supplied original effects.zip adds a complete default navigation sound set (85 distinct mapped events from 86 source files), and fills 59 missing NVDA events in the previously selected VoiceOver pack while preserving the existing ScreenReaderSounds priority. Eleven extra typing themes are available, plus the original Classic Typewriter bell. There are now 706 genuine PCM WAV files across 23 built-in folders. No synthetic sounds or theme.json files are installed. The real NVDA roles/states available depend on the NVDA version and the applications being used.</p>
 <h2>Version 0.8.0: Instant sound previews on selection</h2>
 <p>Arrow through a Navigation, Typing or Keyboard sound pack list to hear a genuine sample from the highlighted pack, without activating it. Arrow through the event editor to hear that event's assigned WAV. Empty entries are silent. Previews load off the dialog thread; when navigation changes before decoding finishes, old pending previews are ignored.</p>
 <p>Pack names now begin directly with the name, such as <strong>Cherry</strong> instead of "Built-in: Cherry", so typing C selects Cherry. The event list also omits redundant role/state type prefixes and assignment suffixes; keyboard letters are listed as A, B, C, etc. Category controls remain separate.</p>
@@ -27,7 +30,7 @@ Unrecorded special keys use an original, non-random sound from the SAME keyboard
 personal themes without a fallback remain silent for missing keys.</p>
 <p>Original ScreenReaderSounds audio has NOW been imported from the 17 MB WAV-bearing ZIP, including
 its inner <code>objdata.zip</code> role sounds and three OGGs decoded to real WAV. The integrated add-on
-contains 510 actual WAV recordings across navigation, typing and keyboard; none are synthetic.
+contains 706 actual WAV recordings across navigation, typing and keyboard; none are synthetic.
 Key-release sounds are not installed because this add-on only plays key-down sounds.
 Explorer selected items now play their genuine listitem/treeviewitem sounds, and
 rapid focus changes cancel stale buffered audio so cues follow the current item.
@@ -53,8 +56,8 @@ For example, <code>role.button.wav</code>, <code>key.tab.wav</code>,
 <code>system.lock.wav</code>, and <code>system.secure_enter.wav</code> identify events.
 Files named <code>key.character.wav</code> and <code>key.character__1.wav</code>
 provide random typing variations, drawn exclusively from the active typing pack.
-The included real navigation pack is <code>navigation/voiceover</code> with 15 original role sounds;
-the real typing pack is <code>typing/classic-typewriter</code> with six original WAV variations.
+The two included navigation packs are <code>navigation/voiceover</code> (109 events) and <code>navigation/default</code> (85 events);
+the <code>typing/classic-typewriter</code> pack now includes six original character variations plus a real carriage bell. Eleven more typing themes were added in version 0.9.
 The earlier code-only ZIP did not include audio; a newer genuine sound-bearing ScreenReaderSounds ZIP
 has since been imported, as described above. No synthesized WAVs are bundled.
 Custom packs use <code>soundThemes/effects/navigation/</code> and
@@ -77,6 +80,6 @@ system-wide configuration feature and entails security risks.</p>
 <p>This preview has passed the offline regression suite but has not been verified end-to-end on Windows NVDA 2026.
 The first 21 WAVs came from the original navSounds publisher; the new audio-bearing ScreenReaderSounds ZIP
 provided the additional recordings, and seven Kliq themes were supplied by the user.
-The packaged total is now 510 original WAVs. Kliq recordings are MIT licensed;
+The packaged total is now 706 original WAVs. Kliq recordings are MIT licensed;
 the notice is included as doc/KLIQ_LICENSE.txt. See SOUND_SOURCES.md in the source distribution.</p>
 </body></html>

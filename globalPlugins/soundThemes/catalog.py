@@ -45,6 +45,9 @@ EVENT_GROUPS = {
         "nav.long_activate": "Long press / long click (when supported)",
         "nav.tick": "Selection tick",
     },
+    "NVDA states": {
+        "state.off": "Switch turned off",
+    },
     "Object events": {
         "object.foreground": "Foreground changed", "object.focus_entered": "Focus entered",
         "object.focus_lost": "Focus lost", "object.state": "State changed",

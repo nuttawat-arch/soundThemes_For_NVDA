@@ -39,6 +39,10 @@ kliq_spec = importlib.util.spec_from_file_location(
     "soundthemes_kliq_audio_merge", ROOT / "scripts" / "import_kliq_audio.py")
 kliq_audio = importlib.util.module_from_spec(kliq_spec)
 kliq_spec.loader.exec_module(kliq_audio)
+effects_spec = importlib.util.spec_from_file_location(
+    "soundthemes_effects_merge", ROOT / "scripts" / "import_effects_archive.py")
+effects_merge = importlib.util.module_from_spec(effects_spec)
+effects_spec.loader.exec_module(effects_merge)
 
 
 def make_wav(path, bits=16):
@@ -320,23 +324,35 @@ class SoundThemeTests(unittest.TestCase):
         nav = packs.ThemeStore(effects / "navigation", self.home / "extra-nav", "navigation")
         typing = packs.ThemeStore(effects / "typing", self.home / "extra-type", "typing")
         keyboard = packs.ThemeStore(effects / "keyboard", self.home / "extra-keyboard", "keyboard")
-        self.assertEqual([entry[0] for entry in nav.themes()], ["builtin:voiceover"])
-        self.assertEqual([entry[0] for entry in typing.themes()],
-                         ["builtin:classic-typewriter", "builtin:voiceover"])
+        self.assertEqual({entry[0] for entry in nav.themes()},
+                         {"builtin:default", "builtin:voiceover"})
+        self.assertEqual({entry[0] for entry in typing.themes()},
+                         {"builtin:voiceover", *(f"builtin:{p}" for p in effects_merge.TYPING_FOLDERS.values())})
         self.assertEqual({entry[0] for entry in keyboard.themes()},
                          {"builtin:voiceover", *(f"builtin:{p.lower()}" for p in kliq_audio.SETS)})
         navigation = nav.load("builtin:voiceover")["sounds"]
         keys = typing.load("builtin:classic-typewriter")["sounds"]
-        self.assertEqual(len(navigation), 50)
+        self.assertEqual(len(navigation), 109)
+        default_nav = nav.load("builtin:default")["sounds"]
+        self.assertEqual(len(default_nav), 85)  # one duplicate editable-text alias
+        for event in ("role.listitem", "role.tablecolumnheader", "role.tablerow",
+                      "state.expanded", "state.invisible", "nav.caret"):
+            self.assertIn(event, default_nav)
+            self.assertIn(event, navigation)
+        self.assertNotIn("role.tablecoulmnheader", default_nav)
+        self.assertNotIn("role.tableraw", default_nav)
+        for stale in ("role.activityindicator", "role.item", "role.on", "role.off"):
+            self.assertNotIn(stale, default_nav)
+            self.assertNotIn(stale, navigation)
         self.assertIn("role.tab", navigation)
         self.assertNotIn("key.tab", navigation)
-        self.assertEqual(set(keys), {"key.character"})
+        self.assertEqual(set(keys), {"key.character", "key.enter"})
         self.assertEqual(len(keys["key.character"]), 6)
         self.assertEqual(set(keyboard.load("builtin:voiceover")["sounds"]),
                          {"keyboard.backspace", "keyboard.end", "keyboard.shift_tab"})
         folders = [nav.directory("builtin:voiceover"), typing.directory("builtin:classic-typewriter"),
                    typing.directory("builtin:voiceover"), keyboard.directory("builtin:voiceover")]
-        self.assertEqual(sum(len(list(folder.glob("*.wav"))) for folder in folders), 63)
+        self.assertGreaterEqual(sum(len(list(folder.glob("*.wav"))) for folder in folders), 120)
         self.assertIn("nav.mouse", navigation)
         for name in kliq_audio.SETS:
             samples = keyboard.load("builtin:" + name.lower())["sounds"]
@@ -344,6 +360,33 @@ class SoundThemeTests(unittest.TestCase):
             self.assertIn("keyboard.default", samples)
             self.assertGreaterEqual(len(samples), 55)
         self.assertTrue(all(not (folder / "theme.json").exists() for folder in folders))
+
+    def test_effects_archive_fixes_real_nvda_names_and_keeps_typing_separate(self):
+        cases = {
+            "activity": "role.busyindicator",
+            "item": "nav.selection",
+            "on": "state.on",
+            "off": "state.off",
+            "tablecoulmnheader": "role.tablecolumnheader",
+            "tableraw": "role.tablerow",
+            "invisibled": "state.invisible",
+            "expended": "state.expanded",
+            "halfchecked": "state.halfchecked",
+            "pressed": "state.pressed",
+            "caret": "nav.caret",
+            "complete": "system.complete",
+            "listitem": "role.listitem",
+        }
+        for filename, event in cases.items():
+            self.assertEqual(effects_merge.navigation_event(filename), event)
+        self.assertEqual(effects_merge.typing_event("delete"), "key.backspace")
+        self.assertEqual(effects_merge.typing_event("space"), "key.space")
+        self.assertEqual(effects_merge.typing_event("typing_4"), "key.character")
+        self.assertEqual(effects_merge.typing_event("bill"), "key.enter")
+        self.assertIn("classic-typewriter", effects_merge.TYPING_FOLDERS.values())
+        self.assertIn("state.off", catalog.EVENT_GROUPS["NVDA states"])
+        self.assertIn('self.play_event("state.on" if on else "state.off")',
+                      (PACKAGE_ROOT / "__init__.py").read_text(encoding="utf-8"))
 
     def test_pcm_wav_formats_and_volume_scaling(self):
         for bits in (8, 16, 24, 32):
@@ -366,6 +409,28 @@ class SoundThemeTests(unittest.TestCase):
         self.assertEqual(keys.event_for_key(0xB3), "system.media")
         keys.clear()
         self.assertFalse(keys.is_pressed(0x10))
+
+    def test_generic_shift_and_sided_shift_are_one_physical_key_event(self):
+        keys = keys_module.KeyboardState()
+        first, code = keys.update_physical(0x10, 0x2A, False, True)
+        self.assertTrue(first)
+        self.assertEqual(code, 0xA0)
+        self.assertEqual(keyboard_catalog.event_for_virtual_key(code), "keyboard.left_shift")
+        first, code = keys.update_physical(0xA0, 0x2A, False, True)
+        self.assertFalse(first)  # duplicate report must not play another WAV
+        self.assertEqual(code, 0xA0)
+        self.assertTrue(keys.is_pressed(0x10))
+        self.assertFalse(keys.update_physical(0x10, 0x2A, False, False)[0])
+        self.assertFalse(keys.is_pressed(0x10))
+        self.assertTrue(keys.update_physical(0xA0, 0x2A, False, True)[0])
+        keys.update_physical(0xA0, 0x2A, False, False)
+        self.assertTrue(keys.update_physical(0x10, 0x36, False, True)[0])
+        self.assertTrue(keys.is_pressed(0x10))
+        self.assertEqual(keys_module.physical_virtual_key(0x10, 0x36), 0xA1)
+        self.assertEqual(keys_module.physical_virtual_key(0x11, extended=True), 0xA3)
+        self.assertEqual(keys_module.physical_virtual_key(0x12, extended=True), 0xA5)
+        # Left and right Shift really can be held independently.
+        self.assertTrue(keys.update_physical(0x10, 0x2A, False, True)[0])
 
     def test_key_catalog_distinct_events_for_every_windows_vk(self):
         entries = keyboard_catalog.all_keyboard_events()
@@ -645,7 +710,8 @@ class SoundThemeTests(unittest.TestCase):
         focus_block = plugin.split("def event_gainFocus", 1)[1].split("def event_typedCharacter", 1)[0]
         self.assertNotIn("self.play_event(key)", focus_block)
         self.assertIn('self.play_event("nav.scroll")', focus_block)
-        self.assertIn('event_for_virtual_key(vkCode, scanCode, extended)', plugin)
+        self.assertIn('event_for_virtual_key(physical_vk, scanCode, extended)', plugin)
+        self.assertIn('self.keys.update_physical(', plugin)
 
     def test_session_lock_secure_desktop_raw_input_and_mouse_sites(self):
         plugin = (PACKAGE_ROOT / "__init__.py").read_text(encoding="utf-8")

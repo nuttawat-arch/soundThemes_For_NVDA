@@ -11,7 +11,7 @@ def cue_for_focus(role, states, has_exact_sound) -> str:
     In particular State.SELECTED is ubiquitous in Explorer and must not mask
     role.listitem / role.treeviewitem. A bare state fallback is too generic.
     """
-    preferred = ("expanded", "collapsed", "checked", "unchecked", "pressed", "protected", "readonly")
+    preferred = ("expanded", "collapsed", "checked", "on", "unchecked", "pressed", "protected", "readonly")
     names = {canonical_name(state) for state in (states or ())}
     for name in preferred:
         if name in names and has_exact_sound("state." + name):

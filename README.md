@@ -1,4 +1,4 @@
-# Sound Themes for NVDA 0.8.0
+# Sound Themes for NVDA 0.9.0
 
 Maintainer: **Nuttawat Seecham** — nutblind2545t@gmail.com  
 Source and homepage: https://github.com/nuttawat-arch/soundThemes_For_NVDA
@@ -23,6 +23,8 @@ Open NVDA menu → Preferences → Settings → **Sound Themes**. Select three a
 
 **New in 0.8: hear each sound as you navigate.** Arrow through the Navigation, Typing or Keyboard theme chooser in NVDA Settings, or through the theme list in the manager, to audition a real representative WAV from that exact pack without activating it. The event editor likewise previews each assigned event when its list selection moves. A missing WAV stays silent; no modal message interrupts arrowing. Previews decode in a latest-only background worker, so rapidly changing the highlighted item does not block the dialog or play a backlog of outdated previews. All other audio playback continues through the existing polyphonic sound engine.
 
+**New in 0.9: Shift double-sound prevention and complete supplied effects archive.** Raw generic Shift/Control/Alt codes and their side-specific Windows aliases now resolve to the same held physical key, so duplicate reports during one press cannot trigger two independent sound effects. The newly supplied `effects.zip` contributed all **86 original navSounds/default** and **61 typing** source recordings. The built-in `navigation/default` theme has **85 distinct assigned WAVs** after two source names for editable text were combined; **59 previously missing cues** also fill gaps in `navigation/voiceover` without overwriting any existing ScreenReaderSounds recording. The twelve typing packs from that archive remain independently selectable, and identical audio within an event is not copied twice. All built-in sounds remain unmodified original WAV bytes. As before, external add-ons or Windows sticky-key alerts may make their own additional sounds and must be investigated separately if a double sound remains.
+
 Theme list items are named simply `Cherry`, `DSA`, `KAT`, etc., **not** `Built-in: Cherry` or `Custom: Cherry`: type `C` in the list to find Cherry. The event list also omits redundant `Role:` / `State:` prefixes and assignment suffixes; key labels `A`–`Z` and `0`–`9` begin directly with those characters for first-letter lookup. Categories are still available in their separate category control. The selected theme's source and internal identifier are retained for operations without being added to the audible list name.
 
 In the keyboard editor, navigate to **Capture and preview a physical key**. Press any accessible key: the editor selects that physical-key event and immediately previews its assigned WAV. Outside the capture field, Tab/Escape still navigate normally. Select **Replace WAV** to choose a file from anywhere, regardless of filename; the editor saves it as `keyboard.a.wav`, `keyboard.f7.wav`, etc. There is no random-variation button for keyboard packs. Kliq packs have a genuine in-pack fallback sample for keys not individually recorded; custom packs without a fallback remain silent on missing bindings.
@@ -33,6 +35,8 @@ Read [KEYBOARD_SOUNDS_GUIDE.md](KEYBOARD_SOUNDS_GUIDE.md) for full details, exam
 
 ```text
 globalPlugins/soundThemes/effects/
+    navigation/default/role.listitem.wav
+    navigation/default/role.tablecolumnheader.wav
     navigation/voiceover/role.button.wav
     navigation/voiceover/system.lock.wav
     typing/classic-typewriter/key.character__original.wav
@@ -51,7 +55,7 @@ The executable Python files and all bundled WAV assets now share **one `globalPl
 
 ## Source audio and compatibility
 
-The audio-bearing 17 MB `upload/ScreenReaderSounds.zip` contains 50 top-level WAVs, another 24 WAVs inside `objdata.zip`, plus three original OGG recordings. Its source produced **54 unique canonical event assignments**, with inner role recordings taking precedence on duplicates and original OGG recordings decoded offline to real PCM WAVs. Combining both original NVDA add-ons and the **seven real Kliq keyboard sets** from `upload/Sounds.zip` produces **510 genuine WAV files** across 11 built-in sound folders, without synthesized audio. The Kliq importer intentionally omits unused key-release files. See [SOUND_SOURCES.md](SOUND_SOURCES.md) and [FEATURE_AUDIT.md](FEATURE_AUDIT.md).
+The audio-bearing `upload/ScreenReaderSounds.zip` contains 50 top-level WAVs, another 24 WAVs inside `objdata.zip`, plus three original OGG recordings. Its source produced **54 unique canonical event assignments**, with inner role recordings taking precedence on duplicates and original OGG recordings decoded offline to real PCM WAVs. The seven real Kliq keyboard sets came from `upload/Sounds.zip`. **Version 0.9.0 adds the 86 navigation and 61 typing recordings from `upload/effects.zip`, for a total of 706 genuine WAVs in 23 distinct built-in folders** after merging event/file duplicates. No audio was synthesized. The Kliq importer intentionally omits unused key-release files. See [SOUND_SOURCES.md](SOUND_SOURCES.md) and [FEATURE_AUDIT.md](FEATURE_AUDIT.md).
 
 **Seven built-in keyboard themes** are now available: Cherry, DSA, KAT (new-install default), MT3, OEM, SA and XDA. Every recorded key maps directly from its original scan code to one canonical WAV; a missing key uses the same pack's fixed, genuine `keyboard.default.wav` (no randomness or mixing packs). The additional original `keyboard/voiceover` theme remains available. Hardware-specific Fn/brightness buttons may not emit Windows keyboard events visible to NVDA. Some legacy ScreenReaderSounds event IDs are stored for later support but are not yet wired to dependable runtime triggers.
 
@@ -65,24 +69,23 @@ python scripts/build.py
 python scripts/build_source.py
 ```
 
-Run these commands **from the `soundThemes` source directory**. To reimport the optional original supplied archive, run `python scripts/import_kliq_audio.py ../upload/Sounds.zip` if that archive is present. Install `SoundThemesForNVDA-0.8.0.nvda-addon` using NVDA's add-on manager, restart NVDA, and disable old navSounds/ScreenReaderSounds to avoid duplicate feedback. For an existing configuration, select KAT or another Kliq theme under Keyboard Sounds; existing choice `voiceover` is not overwritten. Try portable NVDA 2026 first: static Python tests outside Windows do **not** prove hardware event delivery, secure-desktop playback or accessible Windows wx dialogs.
+Run these commands **from the `soundThemes` source directory**. To reimport the newly supplied files in the developer workspace, run `python scripts/import_effects_archive.py ../upload/effects.zip` if the archive is present; it is *not* required at runtime or for GitHub builds because all selected original WAVs are included in source. Install `SoundThemesForNVDA-0.9.0.nvda-addon` using NVDA's add-on manager, restart NVDA, and disable old navSounds/ScreenReaderSounds or standalone keyboard-sound add-ons to avoid duplicate feedback. Existing selected `voiceover` remains active and gains 59 missing events; Navigation `default` can also be chosen. Try portable NVDA 2026 first: static Python tests outside Windows do **not** prove hardware event delivery, secure-desktop playback or accessible Windows wx dialogs.
 
 ## Publishing to GitHub and the NVDA Add-on Store
 
-The repository above is public. Unpack the **v0.8.0 source** ZIP, then copy the contents of its `soundThemes` folder (including `manifest.ini`, `globalPlugins/`, `doc/`, `.github/` and this `README.md`) into your GitHub repository's root. Do **not** use `echo "# ..." >> README.md`: this README already exists. If v0.7.0 is already checked out locally, **do not run `git init` or `git remote add origin` again**: pull the existing branch before copying the new files.
+Your `git push -u origin main` for commit `aec66da` completed successfully according to the provided PowerShell output. The LF→CRLF warnings are normal Git line-ending notices, not a failed upload. Unpack the **v0.9.0 source** ZIP, then copy the contents of its `soundThemes` folder (including `manifest.ini`, `globalPlugins/`, `doc/`, `.github/` and this `README.md`) into the **existing** GitHub repository folder. Do not `git init`, clone a second time, or add `origin` again.
 
-```bash
-git clone https://github.com/nuttawat-arch/soundThemes_For_NVDA.git
-cd soundThemes_For_NVDA
-# For an already cloned repository, run: git pull --ff-only origin main
-# Copy ALL files from inside the newly extracted soundThemes folder here.
+```powershell
+cd D:\NVDA\soundThemes
+git pull --ff-only origin main
+# Now copy all files from inside the extracted v0.9.0 soundThemes folder here.
 git add -A
-git -c user.name="Nuttawat Seecham" -c user.email="nutblind2545t@gmail.com" commit -m "Release Sound Themes for NVDA 0.8.0: auto-preview"
+git -c user.name="Nuttawat Seecham" -c user.email="nutblind2545t@gmail.com" commit -m "Release Sound Themes for NVDA 0.9.0: Shift and complete effects"
 git push -u origin main
-git tag v0.8.0
-git push origin v0.8.0
+git tag v0.9.0
+git push origin v0.9.0
 ```
 
-On `main` pushes, the included GitHub Actions workflow runs tests and packages a downloadable artifact. Pushing the **new** `v0.8.0` tag creates a separate GitHub Release with the actual `.nvda-addon` installer; existing `v0.7.0` releases stay intact. GitHub authentication may be required (e.g. Git Credential Manager or `gh auth login`). If the repository is still empty, the initial 0.8.0 push is sufficient—there is no need to invent a 0.7.0 tag. The add-on homepage is provided by `url` in `manifest.ini`, which is the same as the required **homepage** field when publishing to the NVDA Add-on Store. Creating a GitHub repository/release does not automatically add the add-on to NVDA's Store: submit its **direct GitHub Release asset download URL** using the [official NVDA Add-on Store submission guide](https://github.com/nvaccess/addon-datastore/blob/master/docs/submitters/submissionGuide.md) and complete the review/validation process.
+On `main` pushes, the included GitHub Actions workflow runs tests and packages a downloadable artifact. Pushing the **new** `v0.9.0` tag creates a separate GitHub Release with the actual `.nvda-addon` installer. The release appears only once its GitHub Actions workflow succeeds. GitHub authentication may be required (e.g. Git Credential Manager). The add-on homepage is provided by `url` in `manifest.ini`, which is the same as the required **homepage** field when publishing to the NVDA Add-on Store. Creating a GitHub repository/release does not automatically add the add-on to NVDA's Store: submit its **direct GitHub Release asset download URL** using the [official NVDA Add-on Store submission guide](https://github.com/nvaccess/addon-datastore/blob/master/docs/submitters/submissionGuide.md) and complete the review/validation process.
 
 Sources: [navSounds](https://github.com/ahmedthebest31/navsounds), [official navSounds sound store](https://ahmedthebest31.github.io/navsounds/store/), ScreenReaderSounds files provided by the user, [Kliq (MIT; sound recordings by Cris)](https://github.com/crafter-station/kliq), [NVDA developer documentation](https://download.nvaccess.org/documentation/developerGuide.html). See `doc/KLIQ_LICENSE.txt`.

@@ -1,14 +1,26 @@
-# Sound provenance and merger status — v0.8.0 (2026-10-24)
+# Sound provenance and merger status — v0.9.0 (2026-10-24)
 
-Version 0.8.0 adds automatic theme/event audition using the very same real WAV files listed below; it neither synthesizes new samples nor changes pack identities. Keyboard previews prefer that pack's original `keyboard.a.wav`, falling back to an available file in the *same* pack.
+Version 0.9.0 imports the new user-provided `upload/effects.zip`: **86 original navSounds/default and 61 original typing WAVs**. The importer retained **85 unique default navigation events** after mapping both editable-text names to one role; an additional **59 missing event recordings** were copied into the existing VoiceOver navigation pack without replacing any original ScreenReaderSounds files. Eleven new typing folders were created, and the existing Classic Typewriter folder gained its real original carriage-bell cue. No synthesized WAVs were used, and duplicate same-event/same-audio variations were omitted. Version 0.8.0 instant audition is preserved.
 
-All **510 original recordings** now reside in the single packaged directory `globalPlugins/soundThemes/effects/`; the old extra `globalPlugins/Sound Themes for NVDA/` asset directory is no longer used. No sound recording was deleted by the move, and no synthesized sound generator is included in source or installer. Runtime playback has up to twelve independent streams with a bounded wait queue; see `FEATURE_AUDIT.md`.
+All **706 original WAV assets** now reside in the single packaged directory `globalPlugins/soundThemes/effects/`; the old extra `globalPlugins/Sound Themes for NVDA/` asset directory is no longer used. The retained VoiceOver/default copies of the 59 newly covered events are deliberately in two independently selectable sound packs, while duplicate event bindings **inside one pack** were collapsed. The obsolete synthetic sound generator is absent from the source and installer. Runtime playback has up to twelve independent streams with a bounded wait queue; see `FEATURE_AUDIT.md`.
 
 | Built-in sound folder | Genuine WAV files | Origin |
 |---|---:|---|
-| `navigation/voiceover` | **50** | Original navSounds Voiceover plus ScreenReaderSounds WAVs; SRS role sound priority. One Kliq `click.wav` mapped to optional mouse hover. |
-| `typing/classic-typewriter` | **6** | Official original navSounds Classic Typewriter, six variants of the *same* character event |
+| `navigation/voiceover` | **109** | 50 original navSounds/ScreenReaderSounds assignments + 59 missing genuine role/state/special cues from effects.zip; SRS samples never overwritten |
+| `navigation/default` | **85** | 86 supplied navSounds/default WAVs, normalized to distinct canonical NVDA events; one duplicate editable-text alias collapsed |
+| `typing/classic-typewriter` | **7** | Six official original navSounds character variants plus the user's real Classic Typewriter carriage bell |
 | `typing/voiceover` | **4** | Original ScreenReaderSounds typing WAVs |
+| `typing/blue-switch` | **3** | Original effects.zip blue switch samples |
+| `typing/red-switch` | **3** | Original effects.zip red switch samples |
+| `typing/brown-switch` | **7** | Original effects.zip brown switch samples |
+| `typing/android-keyboard-1` | **1** | Original effects.zip Android typing sample |
+| `typing/android-keyboard-2` | **2** | Original effects.zip Android typing/space samples |
+| `typing/iphone-keyboard` | **3** | Original effects.zip iPhone samples |
+| `typing/key-1` | **12** | Original effects.zip mechanical typing variations |
+| `typing/key-2` | **12** | Original effects.zip mechanical typing variations |
+| `typing/perkins-braille` | **2** | Original effects.zip Braille-typewriter samples; duplicate originals omitted |
+| `typing/samsung-1` | **3** | Original effects.zip Samsung typing samples |
+| `typing/samsung-2` | **3** | Original effects.zip Samsung typing samples |
 | `keyboard/voiceover` | **3** | Original ScreenReaderSounds Backspace, End and Shift+Tab WAVs |
 | `keyboard/cherry` | **65** | Kliq genuine key-down WAVs, one genuine in-pack fallback |
 | `keyboard/dsa` | **65** | Kliq genuine key-down WAVs, one genuine in-pack fallback |
@@ -17,7 +29,15 @@ All **510 original recordings** now reside in the single packaged directory `glo
 | `keyboard/oem` | **65** | Kliq genuine key-down WAVs, one genuine in-pack fallback |
 | `keyboard/sa` | **64** | Kliq genuine key-down WAVs, one genuine in-pack fallback |
 | `keyboard/xda` | **65** | Kliq genuine key-down WAVs, one genuine in-pack fallback |
-| **Total** | **510** | **Real audio only; 7 Kliq packs** |
+| **Total** | **706** | **Real audio only; 23 built-in packs including 7 Kliq keyboards** |
+
+For deterministic re-import when `effects.zip` is supplied next to the project:
+
+```bash
+python soundThemes/scripts/import_effects_archive.py upload/effects.zip
+```
+
+This importer validates each original PCM WAV, fixes the spelling errors `expended`, `invisibled`, `tablecoulmnheader`, `tableraw`, and maps focus/caret/status names to the right canonical events. It preserves actual byte content and original ScreenReaderSounds priority. Some historical role names in the supplied archive may no longer exist as modern NVDA `controlTypes.Role` members; only actual NVDA focus/state callbacks can play those recordings. Having a WAV available is not proof that Windows will report that event. The source ZIP contains the *importer* and the installed selected audio; it does not contain the redundant source archive.
 
 Unlike the previous code-only archive, `upload/ScreenReaderSounds.zip` now has **55 entries, about 17 MB**: 50 top-level WAVs, `objdata.zip` with another 24 genuine role WAVs, and three original OGG sounds (`ready.ogg`, `tick.ogg`, `volume_beep.ogg`). The audio importer converted the OGG files **offline** to PCM WAV using ffmpeg, not synthesized sound. It placed **54 distinct canonical event assignments** in navigation/typing/keyboard folders; on duplicate role names the distinct files inside `objdata.zip` win over top-level role WAVs, many of which share duplicate content. Identical event names are deduplicated; different named events remain separate even if original bytes repeat.
 
