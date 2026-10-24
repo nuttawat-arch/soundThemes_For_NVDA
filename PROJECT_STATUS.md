@@ -1,4 +1,15 @@
-# Sound Themes for NVDA — Project status v0.11.0 (2026-10-24)
+# Sound Themes for NVDA — Project status v0.12.0 (2026-10-24)
+
+## Completed in v0.12.0
+
+- Re-audited the real original `upload/navSounds.zip`, supplied `upload/ScreenReaderSounds.zip`, the installed `navigation/default` and `navigation/voiceover` WAV folders, and current NVDA upstream Browse Mode/cursor APIs. Both installed navigation packs already contain real `role.button`, `role.link`, `role.heading`, `role.checkbox`, `role.radiobutton` and `role.menuitem` recordings. The missing browser feedback was predominantly **event routing**, not missing audio.
+- Fixed a genuine closure-variable capture bug in `BrowseMonitor.patch`: the `_quickNavScript` wrapper inadvertently invoked `_caretMovementScriptHelper` because both wrappers captured the same reassigned `original` variable. Single-letter browser Quick Navigation could thus receive the wrong call signature and fail. Each wrapper now stores the correct original callable and restores it on shutdown.
+- Removed an ineffective registration against `visionHandlerExtensionPoints.post_browseModeMove`: the imported name is the **module containing the extension-point class**, not an instantiated action. Instead, installed reversible browse/caret movement hooks consistently, regardless of whether the vision module imports. After an actual virtual-caret move, they resolve a **single role-specific** sound using quick-navigation item types or the new virtual-caret object's role; focusable web ancestors (such as links wrapping text) win over static text leaves. A generic caret cue is used only if the role cannot be determined. No event is played when navigation fails to move, and normal NVDA keyboard input passes through.
+- Expanded support for NVDA Quick Navigation targets including buttons, links, headings by level, menu items, toggles, lists, checkboxes, radio buttons, tabs, sliders, clickables and invalid entries. Added fully NVDA-independent regression tests for role resolution, quick navigation, arrow movement, no movement, original method preservation, and presence of real browser role WAVs in both source packs. Updated the English and Thai contextual role descriptions.
+
+## v0.12.0 verification and pending Windows acceptance
+
+- **49/49 Python regression tests passed**. Built `SoundThemesForNVDA-0.12.0.nvda-addon` and `SoundThemesForNVDA-source-0.12.0.zip`; both passed ZIP integrity checks. Installer manifest reports 0.12.0 and contains the new `browse_events.py` plus all 706 WAV recordings. Still need live NVDA on Windows (Chrome, Firefox, Edge) to confirm Browse Mode role audio using B/K/H and arrows in actual virtual buffers, ensure audio cues never double, and verify add-on interactions with other global plugins. No new WAVs required.
 
 ## Completed in v0.11.0
 

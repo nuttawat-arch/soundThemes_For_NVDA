@@ -21,6 +21,7 @@ from utils.security import post_sessionLockStateChanged
 
 from .audio import AudioEngine
 from .browser import BrowseMonitor
+from .browse_events import browse_cue
 from .catalog import canonical_name, is_keyboard_event, is_typing_event
 from .folderpacks import ThemeStore
 from .focus_policy import cue_for_focus
@@ -127,14 +128,15 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             self._register(getOnErrorSoundRequested(), self._error_sound)
         except (ImportError, AttributeError):
             pass
+        # vision.visionHandlerExtensionPoints is a MODULE defining the Action
+        # container, not an instantiated post_browseModeMove event. The old
+        # registration always failed on NVDA. Observe actual Browse Mode
+        # cursor scripts instead, including single-letter navigation and
+        # arrowing through web controls that never receive keyboard focus.
         try:
-            from vision import visionHandlerExtensionPoints
-            self._register(visionHandlerExtensionPoints.post_browseModeMove, self._browse_move)
-        except (ImportError, AttributeError):
-            try:
-                self._browse_monitor.patch()
-            except Exception as error:
-                log.warning("Sound Themes: browse fallback unavailable: %s", error)
+            self._browse_monitor.patch()
+        except Exception as error:
+            log.warning("Sound Themes: browse cursor monitoring unavailable: %s", error)
         try:
             from core import postNvdaStartup
             self._register(postNvdaStartup, self._startup)
@@ -301,20 +303,9 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         self.play_event("system.ready" if self.audio.has_sound("system.ready")
                         else "system.start", 0)
 
-    def _browse_move(self, *args, **kwargs):
-        self.play_event("nav.browse")
-        try:
-            import api
-            import textInfos
-            obj = api.getFocusObject()
-            interceptor = getattr(obj, "treeInterceptor", None)
-            if interceptor:
-                info = interceptor.makeTextInfo(textInfos.POSITION_CARET)
-                target = getattr(info, "focusableNVDAObjectAtStart", None)
-                if target:
-                    self._play_role_or_state(target)
-        except Exception:
-            pass
+    def browse_moved(self, info, hint=None, root=None):
+        """Play the actual web element role when the virtual caret moves."""
+        self.play_event(browse_cue(info, hint=hint, root=root), .035)
 
     def _install_speech_filter(self):
         # Preserve navSounds' option without hijacking the legacy

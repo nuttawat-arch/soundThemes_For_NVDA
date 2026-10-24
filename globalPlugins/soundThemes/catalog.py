@@ -302,9 +302,10 @@ def event_description(event_key: str, label: str = "", language: str = "en") -> 
     if event_key.startswith("role."):
         if thai:
             context = TH_ROLE_CONTEXT.get(event_key[5:], "ส่วนควบคุมชนิดนี้ในแอปใดก็ได้")
-            return f"เสียงเมื่อโฟกัสย้ายไปยังบทบาท {display} ตัวอย่าง: {context}"
+            return f"เสียงเมื่อโฟกัสหรือเคอร์เซอร์ Browse Mode ย้ายไปยังบทบาท {display} ตัวอย่าง: {context}"
         context = ROLE_CONTEXT.get(event_key[5:], "A matching accessible control in any application.")
-        return f"When NVDA focuses an object with role {display}. Example: {context}"
+        return (f"When NVDA focus or the browser Browse Mode cursor reaches role {display}. "
+                f"Example: {context}")
     if event_key == "state.default":
         if thai:
             return "เสียงสำรองสำหรับสถานะการเข้าถึงที่ไม่มีไฟล์เสียงตรงกับชนิดนั้นในชุดนี้"

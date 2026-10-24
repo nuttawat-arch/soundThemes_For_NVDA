@@ -1,4 +1,6 @@
-# Sound Themes for NVDA — Keyboard Sounds (v0.11.0)
+# Sound Themes for NVDA — Keyboard Sounds (v0.12.0)
+
+Version 0.12.0: Navigation Sounds now follow web Browse Mode **virtual** cursor movements through links, buttons and headings rather than depending solely on Windows keyboard focus. In a browser, single-letter quick navigation (such as B/K/H) and arrow movement play the role-specific WAV in your chosen navigation pack when NVDA identifies that element. This is independent of physical Keyboard Sounds, which remains off by default. Normal keypress events and browser shortcuts are not intercepted.
 
 Version 0.11.0: **Typing Sounds** can now play Enter, Space and Backspace/Delete on a physical keydown in focused editable fields even when NVDA does not emit a typed-character notification. Matching later notifications are suppressed to avoid doubling. Dedicated samples such as `key.enter.wav` are preferred; otherwise the pack's genuine `key.character.wav` is used (no synthetic audio and no mixing themes). This is Typing Sounds behavior, not the physical **Keyboard Sounds** category, which has its own `keyboard.enter.wav` and similar key events. All categories allow removal of every listed preset; built-in removal is persistent and reversible using **Restore removed presets**. The obsolete **Import old sounds folder** button is gone; import theme ZIPs or edit WAV events directly.
 

@@ -1,4 +1,11 @@
-# Original add-ons → Sound Themes for NVDA 0.11.0
+# Original add-ons → Sound Themes for NVDA 0.12.0
+
+## v0.12.0 web Browse Mode event-completeness audit
+
+- Confirmed with the original navSounds code, sound packs and upstream `nvaccess/nvda` source that browser virtual caret movement does not necessarily generate an NVDA keyboard `event_gainFocus`. **Both** built-in Navigation packs already contain real button, link, heading, checkbox, radio button and menu-item WAVs; no additional recordings needed to be invented.
+- Identified two concrete defects: the `vision.visionHandlerExtensionPoints` import targets a module declaring a dataclass, not a `post_browseModeMove` action instance; and two monkeypatch closures used the same mutable `original` reference, leading `_quickNavScript` to call the caret helper with an incompatible signature after `patch()` finished. Corrected both by consistently installing reversible cursor hooks with independently captured original methods.
+- The new `browse_events.py` resolves semantic roles for quick-navigation item types and the actual virtual-caret object. Quick navigation handles B/K/H and further NVDA target classes; arrow movement prefers the current link/button ancestor over static text. One role cue is emitted per confirmed cursor movement, with a genuine `nav.caret` fallback when no accessible role is available, rather than layering several unrelated clicks. No mutation of original WAVs or gesture consumption.
+- Added **three new browser behavior regression tests** (role resolution, hook integration/restoration, and actual built-in sound presence), raising the offline suite to **49 tests**. Must still validate real Windows/NVDA role delivery in Chrome/Firefox/Edge and sound interplay with third-party add-ons.
 
 ## v0.11.0 typing completeness and removable presets
 

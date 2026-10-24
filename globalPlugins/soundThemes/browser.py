@@ -1,4 +1,10 @@
-"""Carefully reversible fallback for browse/caret moves in older NVDA builds."""
+"""Reversible hooks for role-aware web Browse Mode cursor movements.
+
+Unlike normal application focus, moving the virtual caret onto a web button,
+link, checkbox or heading does not necessarily fire event_gainFocus.  Hook the
+two NVDA cursor movement helpers, as the original navSounds add-on did, and
+play one role cue for the element reached rather than a generic cursor click.
+"""
 
 from __future__ import annotations
 
@@ -20,24 +26,28 @@ class BrowseMonitor:
             except Exception:
                 return None
 
+        def moved(before, after):
+            if before is None or after is None:
+                return False
+            try:
+                return before.compareEndPoints(after, "startToStart") != 0
+            except Exception:
+                return False
+
         target = browseMode.BrowseModeTreeInterceptor
         original = getattr(target, "_quickNavScript", None)
         if original:
+            quick_original = original
             def quick(instance, *args, **kwargs):
                 before = snapshot(instance)
-                result = original(instance, *args, **kwargs)
+                result = quick_original(instance, *args, **kwargs)
                 after = snapshot(instance)
-                if before is not None and after is not None:
+                if moved(before, after):
+                    item = kwargs.get("itemType") or (args[1] if len(args) > 1 else None)
                     try:
-                        if before.compareEndPoints(after, "startToStart") != 0:
-                            self.plugin.play_event("nav.quick")
-                            item = kwargs.get("itemType") or (args[1] if len(args) > 1 else None)
-                            if item:
-                                self.plugin.play_event(f"role.{str(item).lower().replace('_', '')}")
-                        else:
-                            self.plugin.play_event("key.invalid")
+                        self.plugin.browse_moved(after, item, getattr(instance, "rootNVDAObject", None))
                     except Exception:
-                        pass
+                        pass  # Audio must never break NVDA keyboard navigation.
                 return result
             setattr(target, "_quickNavScript", quick)
             self.patches.append((target, "_quickNavScript", original, quick))
@@ -45,19 +55,24 @@ class BrowseMonitor:
         target = cursorManager.CursorManager
         original = getattr(target, "_caretMovementScriptHelper", None)
         if original:
+            caret_original = original
             def caret(instance, *args, **kwargs):
                 before = snapshot(instance)
-                result = original(instance, *args, **kwargs)
+                result = caret_original(instance, *args, **kwargs)
                 after = snapshot(instance)
-                if before is not None and after is not None:
-                    try:
-                        if before.compareEndPoints(after, "startToStart") != 0:
-                            if self.plugin.setting("arrowNavSounds"):
-                                self.plugin.play_event("nav.caret")
-                        elif self.plugin.setting("arrowNavSounds"):
-                            self.plugin.play_event("key.boundary")
-                    except Exception:
-                        pass
+                if self.plugin.setting("arrowNavSounds") and moved(before, after):
+                    if isinstance(instance, browseMode.BrowseModeTreeInterceptor):
+                        # An arrow can move to a web button without changing
+                        # keyboard focus. Use the object at the NEW caret.
+                        try:
+                            self.plugin.browse_moved(after, root=getattr(instance, "rootNVDAObject", None))
+                        except Exception:
+                            pass
+                    else:
+                        try:
+                            self.plugin.play_event("nav.caret")
+                        except Exception:
+                            pass
                 return result
             setattr(target, "_caretMovementScriptHelper", caret)
             self.patches.append((target, "_caretMovementScriptHelper", original, caret))

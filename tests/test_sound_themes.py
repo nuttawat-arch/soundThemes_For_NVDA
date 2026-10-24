@@ -28,6 +28,8 @@ sys.modules[package.__name__] = package
 catalog = importlib.import_module("nvda_sound_testpackage.catalog")
 packs = importlib.import_module("nvda_sound_testpackage.folderpacks")
 audio = importlib.import_module("nvda_sound_testpackage.audio")
+browse_events = importlib.import_module("nvda_sound_testpackage.browse_events")
+browse_module = importlib.import_module("nvda_sound_testpackage.browser")
 keys_module = importlib.import_module("nvda_sound_testpackage.keyboard_state")
 keyboard_catalog = importlib.import_module("nvda_sound_testpackage.keyboard_catalog")
 modes = importlib.import_module("nvda_sound_testpackage.modes")
@@ -154,6 +156,117 @@ class SoundThemeTests(unittest.TestCase):
         ui_source = (PACKAGE_ROOT / "settings.py").read_text(encoding="utf-8")
         self.assertNotIn("Import old sounds &folder", ui_source)
         self.assertIn("Restore removed presets", ui_source)
+
+    def test_browse_role_cues_resolve_virtual_cursor_objects_and_quick_nav_hints(self):
+        root = types.SimpleNamespace(role="DOCUMENT")
+        button = types.SimpleNamespace(role="BUTTON")
+        link = types.SimpleNamespace(role="LINK")
+        heading = types.SimpleNamespace(role="HEADING")
+
+        def info(obj, focusable=None):
+            return types.SimpleNamespace(NVDAObjectAtStart=obj,
+                                         focusableNVDAObjectAtStart=focusable)
+
+        self.assertEqual(browse_events.browse_cue(info(button), root=root), "role.button")
+        self.assertEqual(browse_events.browse_cue(info(link), root=root), "role.link")
+        self.assertEqual(browse_events.browse_cue(info(heading), root=root), "role.heading")
+        self.assertEqual(browse_events.browse_cue(info(root, button), root=root), "role.button")
+        self.assertEqual(browse_events.browse_cue(
+            info(types.SimpleNamespace(role="STATICTEXT"), link), root=root), "role.link")
+        self.assertEqual(browse_events.browse_cue(info(root), root=root), "nav.caret")
+        self.assertEqual(browse_events.browse_cue(info(root), hint="button", root=root), "role.button")
+        self.assertEqual(browse_events.browse_cue(info(root), hint="heading3", root=root), "role.heading")
+        self.assertEqual(browse_events.browse_cue(info(root), hint="visitedLink", root=root), "role.link")
+        self.assertEqual(browse_events.browse_cue(info(root), hint="menuItem", root=root), "role.menuitem")
+        self.assertEqual(browse_events.browse_cue(info(root), hint="toggleButton", root=root), "role.togglebutton")
+        self.assertEqual(browse_events.browse_cue(info(root), hint="clickable", root=root), "state.clickable")
+        self.assertEqual(browse_events.browse_cue(info(root), hint="error", root=root), "state.invalidentry")
+        self.assertEqual(browse_events.browse_cue(info(root), hint="formField", root=root), "nav.caret")
+
+    def test_browser_button_link_and_heading_recordings_exist_in_both_original_packs(self):
+        for theme in ("default", "voiceover"):
+            folder = ROOT / "globalPlugins" / "soundThemes" / "effects" / "navigation" / theme
+            for role in ("button", "link", "heading", "checkbox", "radiobutton", "menuitem"):
+                self.assertTrue((folder / f"role.{role}.wav").is_file(), (theme, role))
+
+    def test_browse_monitor_plays_actual_control_once_per_movement_and_restores_hooks(self):
+        root = types.SimpleNamespace(role="DOCUMENT")
+        button = types.SimpleNamespace(role="BUTTON")
+        link = types.SimpleNamespace(role="LINK")
+        heading = types.SimpleNamespace(role="HEADING")
+
+        class FakeInfo:
+            def __init__(self, position, obj):
+                self.position = position
+                self.NVDAObjectAtStart = obj
+                self.focusableNVDAObjectAtStart = obj
+
+            def copy(self):
+                return FakeInfo(self.position, self.NVDAObjectAtStart)
+
+            def compareEndPoints(self, other, mode):
+                return self.position - other.position
+
+        class FakeCursor:
+            def __init__(self):
+                self.position = 0
+                self.objects = [root, button, link, heading]
+
+            def makeTextInfo(self, position):
+                return FakeInfo(self.position, self.objects[self.position])
+
+            def _caretMovementScriptHelper(self, gesture, unit):
+                if self.position < len(self.objects) - 1:
+                    self.position += 1
+                return "caret-result"
+
+        class FakeBrowse(FakeCursor):
+            rootNVDAObject = root
+
+            def _quickNavScript(self, gesture, itemType, direction, errorMessage, readUnit):
+                if self.position < len(self.objects) - 1:
+                    self.position += 1
+                return "quick-result"
+
+        original_quick = FakeBrowse._quickNavScript
+        original_caret = FakeCursor._caretMovementScriptHelper
+        events = []
+        plugin = types.SimpleNamespace(
+            browse_moved=lambda info, hint=None, root=None: events.append(
+                browse_events.browse_cue(info, hint=hint, root=root)),
+            play_event=lambda event: events.append(event),
+            setting=lambda key: True,
+        )
+        with patch.dict(sys.modules, {
+                "browseMode": types.SimpleNamespace(BrowseModeTreeInterceptor=FakeBrowse),
+                "cursorManager": types.SimpleNamespace(CursorManager=FakeCursor),
+                "textInfos": types.SimpleNamespace(POSITION_CARET="caret"),
+        }):
+            monitor = browse_module.BrowseMonitor(plugin)
+            monitor.patch()
+            try:
+                browse = FakeBrowse()
+                self.assertEqual(browse._quickNavScript(None, "button", "next", "", None), "quick-result")
+                self.assertEqual(browse._caretMovementScriptHelper(None, "character"), "caret-result")
+                self.assertEqual(browse._caretMovementScriptHelper(None, "character"), "caret-result")
+                self.assertEqual(events, ["role.button", "role.link", "role.heading"])
+                # Movement reaching the end must not create a fake click.
+                browse._caretMovementScriptHelper(None, "character")
+                self.assertEqual(len(events), 3)
+                plain = FakeCursor()
+                plain._caretMovementScriptHelper(None, "character")
+                self.assertEqual(events[-1], "nav.caret")
+                # A failing sound backend must never swallow the NVDA command.
+                def failed_audio(*args, **kwargs):
+                    raise RuntimeError("audio unavailable")
+                plugin.browse_moved = failed_audio
+                browse.position = 0
+                self.assertEqual(browse._quickNavScript(None, "button", "next", "", None), "quick-result")
+                self.assertEqual(browse.position, 1)
+            finally:
+                monitor.terminate()
+        self.assertIs(FakeBrowse._quickNavScript, original_quick)
+        self.assertIs(FakeCursor._caretMovementScriptHelper, original_caret)
 
     def test_import_export_wav_only(self):
         origin = self.nav.create("For Export", "builtin:balanced")
@@ -853,7 +966,8 @@ class SoundThemeTests(unittest.TestCase):
         self.assertIn("decide_handleRawKey", plugin)
         self.assertIn("event_mouseMove", plugin)
         self.assertIn("hoverDelay", plugin)
-        self.assertIn("post_browseModeMove", plugin)
+        self.assertIn("self._browse_monitor.patch()", plugin)
+        self.assertNotIn("self._register(visionHandlerExtensionPoints.post_browseModeMove", plugin)
         self.assertIn("post_speechPaused", plugin)
         self.assertIn('self.play_event("system.paused_feedback", 0)', plugin)
 
