@@ -133,6 +133,7 @@ class AudioEngine:
     # A bounded number of independent playback streams prevents a long WAV
     # from blocking short keystrokes without creating unbounded threads/buffers.
     MAX_VOICES = 12
+    MAX_INPUT_QUEUE = 24
 
     def __init__(self, output_device, logger):
         self._output_device = output_device
@@ -144,6 +145,13 @@ class AudioEngine:
         # Retain a small burst, with newest-wins overflow; stale navigation
         # sounds must not accumulate while all playback voices are occupied.
         self._queue = queue.Queue(maxsize=self.MAX_VOICES)
+        # Keyboard and typing cues are time-sensitive. A busy web page can
+        # produce a burst of focus/state events that would otherwise evict all
+        # key sounds from the single shared queue. Keep a separate, bounded
+        # FIFO of input sounds without holding up NVDA's keyboard hook.
+        self._urgent_queue = queue.Queue(maxsize=self.MAX_INPUT_QUEUE)
+        self._dropped_navigation = 0
+        self._dropped_input = 0
         self._closed = threading.Event()
         self._preview_requests = queue.Queue(maxsize=1)
         self._preview_lock = threading.Lock()
@@ -214,21 +222,35 @@ class AudioEngine:
         if options is None or self._closed.is_set():
             return
         sound = options[0] if is_keyboard_event(event) else random.choice(options)
-        self._enqueue_latest(sound)
+        self._enqueue_latest(sound, important=is_keyboard_event(event) or is_typing_event(event))
 
-    def _enqueue_latest(self, sound):
-        """Never block NVDA: keep simultaneous cues unless the bounded queue fills."""
+    def _enqueue_latest(self, sound, important=False):
+        """Never block NVDA: prefer real key feedback over stale focus cues."""
+        target = (getattr(self, "_urgent_queue", None) if important else None) or self._queue
         try:
-            self._queue.put_nowait(sound)
+            target.put_nowait(sound)
         except queue.Full:
             try:
-                self._queue.get_nowait()
+                target.get_nowait()
             except queue.Empty:
                 pass
+            if important:
+                self._dropped_input = getattr(self, "_dropped_input", 0) + 1
+            else:
+                self._dropped_navigation = getattr(self, "_dropped_navigation", 0) + 1
             try:
-                self._queue.put_nowait(sound)
+                target.put_nowait(sound)
             except queue.Full:
                 pass  # A newer event won the race; never reorder it.
+
+    def diagnostics(self):
+        """Snapshot bounded-queue pressure for user-requested diagnostics."""
+        return {
+            "queuedInput": self._urgent_queue.qsize(),
+            "queuedOther": self._queue.qsize(),
+            "skippedInput": self._dropped_input,
+            "skippedOther": self._dropped_navigation,
+        }
 
     def preview_file(self, path: Path, volume: int):
         """Schedule a latest-only audition; decoding never blocks wx/NVDA UI."""
@@ -280,12 +302,29 @@ class AudioEngine:
 
     def _run(self):
         pending = None
+        pending_input = False
         while not self._closed.is_set():
             if pending is None:
                 try:
-                    pending = self._queue.get(timeout=0.05)
+                    pending = self._urgent_queue.get_nowait()
+                    pending_input = True
                 except queue.Empty:
-                    continue
+                    try:
+                        pending = self._queue.get(timeout=0.008)
+                        pending_input = False
+                    except queue.Empty:
+                        continue
+            elif not pending_input:
+                # A navigation cue that was already dequeued must not jump
+                # ahead of a newly arriving physical keystroke.
+                try:
+                    important = self._urgent_queue.get_nowait()
+                except queue.Empty:
+                    pass
+                else:
+                    self._enqueue_latest(pending)
+                    pending = important
+                    pending_input = True
             # Device resolution can traverse NVDA configuration/profile state.
             # One queued sound needs one lookup, not a repeated lookup for
             # each occupied playback voice on a busy system.
@@ -307,14 +346,22 @@ class AudioEngine:
                     pending = None
                     break
             else:
-                # All streams are busy. Drop superseded waiting focus cues,
-                # but do not touch any audio already playing on other streams.
-                try:
-                    pending = self._queue.get(timeout=0.015)
-                    while True:
-                        pending = self._queue.get_nowait()
-                except queue.Empty:
-                    pass
+                if pending_input:
+                    # Preserve the oldest pending key sound; additional key
+                    # sounds stay in their own bounded FIFO until a voice is
+                    # free. Do not spin while all streams are occupied.
+                    self._closed.wait(0.008)
+                else:
+                    # Navigation is context feedback: prefer the latest cue
+                    # when the UI has already moved elsewhere.
+                    try:
+                        pending = self._queue.get(timeout=0.008)
+                        self._dropped_navigation += 1
+                        while True:
+                            pending = self._queue.get_nowait()
+                            self._dropped_navigation += 1
+                    except queue.Empty:
+                        pass
 
     def close(self):
         self._closed.set()

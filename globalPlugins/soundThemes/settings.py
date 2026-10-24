@@ -79,19 +79,19 @@ class SoundSettingsPanel(wx.ScrolledWindow):
         self.nav_ids = [theme_id for theme_id, _ in navigation]
         self.typing_ids = [theme_id for theme_id, _ in typing]
         self.keyboard_ids = [theme_id for theme_id, _ in keyboard]
-        self.helper.addItem(wx.StaticText(self, label=_("Active sound &theme:")))
+        self.helper.addItem(wx.StaticText(self, label=_("&Navigation sound theme:")))
         self.theme = self.helper.addItem(wx.Choice(self, choices=[name for _, name in navigation]))
-        self.theme.SetName(_("Active sound theme"))
+        self.theme.SetName(_("Navigation sound theme"))
         chosen = plugin.setting("theme")
         if chosen in self.nav_ids:
             self.theme.SetSelection(self.nav_ids.index(chosen))
-        self.helper.addItem(wx.StaticText(self, label=_("&Typing sound theme (can be different):")))
+        self.helper.addItem(wx.StaticText(self, label=_("&Typing sound theme:")))
         self.typing_theme = self.helper.addItem(wx.Choice(self, choices=[name for _, name in typing]))
         self.typing_theme.SetName(_("Typing sound theme"))
         typing_chosen = plugin.setting("typingTheme")
         if typing_chosen in self.typing_ids:
             self.typing_theme.SetSelection(self.typing_ids.index(typing_chosen))
-        self.helper.addItem(wx.StaticText(self, label=_("&Keyboard sound theme (individual keys):")))
+        self.helper.addItem(wx.StaticText(self, label=_("&Keyboard sound theme:")))
         self.keyboard_theme = self.helper.addItem(wx.Choice(self, choices=[name for _, name in keyboard]))
         self.keyboard_theme.SetName(_("Keyboard sound theme"))
         keyboard_chosen = plugin.setting("keyboardTheme")
@@ -104,24 +104,24 @@ class SoundSettingsPanel(wx.ScrolledWindow):
         self.keyboard_theme.Bind(wx.EVT_CHOICE, lambda evt: self.preview_setting_theme(
             self.keyboard_theme, self.keyboard_ids, plugin.keyboard_store))
 
-        self.enabled = self._check(_("&Enable sound effects"), "enabled")
-        self.navigation = self._check(_("Play &navigation, role and state sounds"), "navigation")
+        self.enabled = self._check(_("&Enable Sound Themes"), "enabled")
+        self.navigation = self._check(_("Play &navigation sounds"), "navigation")
         self.typing = self._check(_("Play &typing sounds"), "typing")
-        self.keyboard = self._check(_("Play &Keyboard Sounds for individual keys (disables navigation and typing)"), "keyboard")
+        self.keyboard = self._check(_("Play &keyboard sounds (turns off navigation and typing)"), "keyboard")
         self.navigation.Bind(wx.EVT_CHECKBOX, lambda evt: self.on_mode_change("navigation"))
         self.typing.Bind(wx.EVT_CHECKBOX, lambda evt: self.on_mode_change("typing"))
         self.keyboard.Bind(wx.EVT_CHECKBOX, lambda evt: self.on_mode_change("keyboard"))
-        self.system = self._check(_("Play &system sounds, including lock/unlock"), "system")
+        self.system = self._check(_("Play &system sounds, including lock and unlock"), "system")
         self.pauseFeedback = self._check(
-            _("Play speech-pause feedback (except when pressing Shift; off by default)"),
+            _("Play a sound when speech is paused (except by Shift)"),
             "pauseFeedback",
         )
         self.mouse = self._check(_("Play sounds on mouse &hover"), "mouse")
         self.mouse.Bind(wx.EVT_CHECKBOX, self.on_mouse)
-        self.onlyEditable = self._check(_("Only play typing sounds in &editable fields"), "onlyEditable")
-        self.arrowNavSounds = self._check(_("Play arrow &navigation sounds"), "arrowNavSounds")
-        self.sayRoles = self._check(_("Speak element &roles"), "sayRoles")
-        self.sayStates = self._check(_("Speak element &states"), "sayStates")
+        self.onlyEditable = self._check(_("Only play typing sounds in &text fields"), "onlyEditable")
+        self.arrowNavSounds = self._check(_("Play sounds when &moving with arrow keys"), "arrowNavSounds")
+        self.sayRoles = self._check(_("Announce the &type of selected control"), "sayRoles")
+        self.sayStates = self._check(_("Announce the &state of selected control"), "sayStates")
 
         self.helper.addItem(wx.StaticText(self, label=_("Mouse hover &delay (milliseconds):")))
         self.delay = self.helper.addItem(wx.SpinCtrl(self, min=50, max=2000))
@@ -137,6 +137,8 @@ class SoundSettingsPanel(wx.ScrolledWindow):
         manager.Bind(wx.EVT_BUTTON, self.manage)
         open_folders = self.helper.addItem(wx.Button(self, label=_("&Open sound folders")))
         open_folders.Bind(wx.EVT_BUTTON, self.on_open_folder)
+        audio_report = self.helper.addItem(wx.Button(self, label=_("&Sound playback report...")))
+        audio_report.Bind(wx.EVT_BUTTON, self.on_audio_report)
         self.checkForUpdates = self._check(
             _("Check for Sound Themes &updates when NVDA starts"), "checkForUpdates")
         check_now = self.helper.addItem(wx.Button(self, label=_("Check for &updates now")))
@@ -170,6 +172,18 @@ class SoundSettingsPanel(wx.ScrolledWindow):
             os.startfile(str(directory))
         except (OSError, AttributeError) as error:
             explain_error(self, error)
+
+    def on_audio_report(self, evt):
+        """Show queue pressure without doing disk I/O during keyboard events."""
+        numbers = self.plugin.audio.diagnostics()
+        message = _(
+            "Input sounds waiting: {queuedInput}\n"
+            "Other sounds waiting: {queuedOther}\n"
+            "Input sounds skipped during overload: {skippedInput}\n"
+            "Other sounds skipped during overload: {skippedOther}\n\n"
+            "These counts are since NVDA started. Rapid focus changes may be skipped intentionally."
+        ).format(**numbers)
+        wx.MessageBox(message, _("Sound playback report"), wx.OK | wx.ICON_INFORMATION, self)
 
     def manage(self, evt):
         dialog = ThemeManager(self, self.plugin)
@@ -230,6 +244,7 @@ class SoundSettingsDialog(wx.Dialog):
         if actions is not None:
             main.Add(actions, 0, wx.ALL | wx.EXPAND, 8)
         self.SetSizer(main)
+        self.SetEscapeId(wx.ID_CANCEL)
         self.Bind(wx.EVT_BUTTON, self.on_save, id=wx.ID_OK)
 
     def on_save(self, evt):
@@ -255,8 +270,9 @@ class ThemeManager(wx.Dialog):
             page = ThemeManagerPage(notebook, plugin, store, kind)
             notebook.AddPage(page, label)
         main.Add(notebook, 1, wx.ALL | wx.EXPAND, 8)
-        close = wx.Button(self, wx.ID_CLOSE, _("&Close"))
-        close.Bind(wx.EVT_BUTTON, lambda evt: self.EndModal(wx.ID_CLOSE))
+        close = wx.Button(self, wx.ID_CANCEL, _("&Close"))
+        close.Bind(wx.EVT_BUTTON, lambda evt: self.EndModal(wx.ID_CANCEL))
+        self.SetEscapeId(wx.ID_CANCEL)
         main.Add(close, 0, wx.ALL | wx.ALIGN_RIGHT, 8)
         self.SetSizer(main)
 
@@ -271,30 +287,30 @@ class ThemeManagerPage(wx.Panel):
                             "keyboard": "keyboardTheme"}[kind]
         main = wx.BoxSizer(wx.VERTICAL)
         main.Add(wx.StaticText(self, label=_(
-            "Sound themes (all presets can be edited, renamed, and deleted):")),
+            "Available sound themes:")),
                  0, wx.ALL, 8)
         self.theme_list = wx.ListBox(self, style=wx.LB_SINGLE)
         self.theme_list.SetName(_("Available sound themes"))
         self.theme_list.Bind(wx.EVT_LISTBOX, self.on_theme_selection)
         main.Add(self.theme_list, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
         if kind == "keyboard":
-            main.Add(wx.StaticText(self, label=_("&Keyboard playback mode for this preset:")),
+            main.Add(wx.StaticText(self, label=_("&How the keyboard sound plays:")),
                      0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
             self.playback_mode = wx.Choice(self, choices=[
-                _("Two layers: separate press and release WAVs"),
-                _("One layer: one WAV already contains press and release"),
+                _("Two layers: separate sounds for pressing and releasing"),
+                _("One layer: one sound includes pressing and releasing"),
             ])
             self.playback_mode.SetName(_("Playback mode for selected keyboard preset"))
             self.playback_mode.Bind(wx.EVT_CHOICE, self.on_playback_mode)
             main.Add(self.playback_mode, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
         buttons = wx.FlexGridSizer(cols=2, hgap=5, vgap=5)
         actions = [
-            (_("&Create / copy selected..."), self.create),
+            (_("&Create or copy a theme..."), self.create),
             (_("&Edit sounds..."), self.edit),
             (_("Re&name..."), self.rename),
             (_("&Delete..."), self.delete),
-            (_("Import theme &ZIP..."), self.import_zip),
-            (_("E&xport theme ZIP..."), self.export),
+            (_("&Import theme..."), self.import_zip),
+            (_("E&xport theme..."), self.export),
             (_("&Use this theme"), self.activate),
         ]
         if not getattr(self.store, "embedded", False):
@@ -499,12 +515,12 @@ class ThemeEditor(wx.Dialog):
             key=lambda pair: (pair[1].casefold(), pair[0]),
         )
         main = wx.BoxSizer(wx.VERTICAL)
-        main.Add(wx.StaticText(self, label=_("Choose an &event to assign a WAV file:")), 0, wx.ALL, 8)
+        main.Add(wx.StaticText(self, label=_("Choose a &sound to customize:")), 0, wx.ALL, 8)
         self.events = wx.ListBox(self)
         self.events.SetName(_("Sound events"))
         self.events.Set([label for _, label in self.visible])
         main.Add(self.events, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
-        main.Add(wx.StaticText(self, label=_("Where and when this sound is used:")),
+        main.Add(wx.StaticText(self, label=_("When this sound is played:")),
                  0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
         self.event_help = wx.TextCtrl(self, style=wx.TE_READONLY | wx.TE_MULTILINE,
                                       size=(-1, 64))
@@ -514,28 +530,28 @@ class ThemeEditor(wx.Dialog):
             "Speak the event description when moving through the list"))
         self.announce_help.SetValue(True)
         main.Add(self.announce_help, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
-        self.path_label = wx.StaticText(self, label=_("Sound file: none"))
+        self.path_label = wx.StaticText(self, label=_("Current sound: none"))
         main.Add(self.path_label, 0, wx.ALL, 8)
         if store.kind == "keyboard":
-            self.release_label = wx.StaticText(self, label=_("Release WAV: none"))
+            self.release_label = wx.StaticText(self, label=_("Key release sound: none"))
             main.Add(self.release_label, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
             main.Add(wx.StaticText(self, label=_("Press a key in the field below to select and preview its sound:")),
                      0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
             self.capture = wx.TextCtrl(self, style=wx.TE_READONLY)
             self.capture.SetName(_("Capture and preview a physical key"))
-            self.capture.SetValue(_("Focus here and press a key, including Tab or F1–F12"))
+            self.capture.SetValue(_("Press a key to find it; use Tab to move to the next control"))
             main.Add(self.capture, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
             self.capture.Bind(wx.EVT_CHAR_HOOK, self.on_key_capture)
         buttons = wx.FlexGridSizer(cols=2, hgap=5, vgap=5)
-        actions = [(_("&Replace WAV..."), self.assign)]
+        actions = [(_("&Choose sound file..."), self.assign)]
         if store.kind == "keyboard":
             actions.extend([
-                (_("Replace key &release WAV..."), self.assign_release),
-                (_("Preview release WAV"), self.preview_release),
-                (_("Remove release WAV"), self.remove_release),
+                (_("Choose key &release sound..."), self.assign_release),
+                (_("Preview release sound"), self.preview_release),
+                (_("Remove release sound"), self.remove_release),
             ])
         else:
-            actions.append((_("Add WAV &variation..."), self.append))
+            actions.append((_("Add another sound &variation..."), self.append))
         actions.extend([(_("&Preview"), self.preview), (_("&Remove assignment"), self.remove)])
         for title, callback in actions:
             button = wx.Button(self, label=title)
@@ -550,6 +566,9 @@ class ThemeEditor(wx.Dialog):
         finish.Add(done, 0, wx.RIGHT, 8)
         cancel = wx.Button(self, wx.ID_CANCEL, _("&Cancel"))
         cancel.Bind(wx.EVT_BUTTON, self.on_cancel)
+        # Do not let wx close the editor directly before we can confirm
+        # discarding edits; handle Esc via the char-hook and capture field.
+        self.SetEscapeId(wx.ID_NONE)
         finish.Add(cancel, 0)
         main.Add(finish, 0, wx.ALL | wx.ALIGN_RIGHT, 8)
         self.SetSizer(main)
@@ -558,6 +577,14 @@ class ThemeEditor(wx.Dialog):
             self.events.SetSelection(0)
         self.on_select(None)
         self.Bind(wx.EVT_CLOSE, self.on_cancel)
+        # Intercept Esc instead of relying on wx's automatic dismissal.
+        self.Bind(wx.EVT_CHAR_HOOK, self.on_escape)
+
+    def on_escape(self, event):
+        if event.GetKeyCode() == wx.WXK_ESCAPE:
+            self.on_cancel(event)
+        else:
+            event.Skip()
 
     def selected_key(self):
         index = self.events.GetSelection()
@@ -579,10 +606,10 @@ class ThemeEditor(wx.Dialog):
         value = mapping.get(key)
         description = (_("%d sound variations") % len(value) if isinstance(value, list)
                        else value or _("none (fallback may apply)"))
-        self.path_label.SetLabel(_("Sound file: %s") % description)
+        self.path_label.SetLabel(_("Current sound: %s") % description)
         if self.store.kind == "keyboard":
             released = mapping.get(key + ".release") if key else None
-            self.release_label.SetLabel(_("Release WAV: %s") % (released or _("none")))
+            self.release_label.SetLabel(_("Key release sound: %s") % (released or _("none")))
         if evt is not None and key:
             path = self.store.sound_for(self.identifier, key)
             if path is not None:
@@ -604,6 +631,23 @@ class ThemeEditor(wx.Dialog):
         self.EndModal(wx.ID_OK)
 
     def on_cancel(self, evt):
+        try:
+            has_changes = self.session.has_changes()
+        except OSError as error:
+            explain_error(self, error)
+            return
+        if has_changes:
+            answer = wx.MessageBox(
+                _("You have unsaved sound changes. Discard them and close this editor?"),
+                _("Discard sound changes?"),
+                wx.YES_NO | wx.NO_DEFAULT | wx.ICON_WARNING,
+                self,
+            )
+            if answer != wx.YES:
+                # No is the safe default: keep every edit and the editor open.
+                if isinstance(evt, wx.CloseEvent) and evt.CanVeto():
+                    evt.Veto()
+                return
         if self._description_timer is not None:
             self._description_timer.Stop()
             self._description_timer = None
@@ -617,7 +661,13 @@ class ThemeEditor(wx.Dialog):
         self.EndModal(wx.ID_CANCEL)
 
     def on_key_capture(self, event):
-        """Consume keystrokes only in this field; keep Tab accessible elsewhere."""
+        """Keep Escape and Tab available for closing and keyboard navigation."""
+        if event.GetKeyCode() == wx.WXK_ESCAPE:
+            self.on_cancel(event)
+            return
+        if event.GetKeyCode() == wx.WXK_TAB:
+            event.Skip()
+            return
         raw = event.GetRawKeyCode()
         code = raw if 1 <= raw <= 255 else event.GetKeyCode()
         if not 1 <= code <= 255:

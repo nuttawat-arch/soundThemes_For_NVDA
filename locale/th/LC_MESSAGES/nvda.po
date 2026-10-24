@@ -1,0 +1,390 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Sound Themes for NVDA 0.16.0\n"
+"PO-Revision-Date: 2026-10-24 20:00+0700\n"
+"Last-Translator: Nuttawat Seecham <nutblind2545t@gmail.com>\n"
+"Language-Team: Thai\n"
+"Language: th\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Sound Themes"
+msgstr "ชุดเสียง Sound Themes"
+
+msgid "Theme name:"
+msgstr "ชื่อชุดเสียง:"
+
+msgid "&Navigation sound theme:"
+msgstr "ชุดเสียง&นำทาง:"
+
+msgid "Navigation sound theme"
+msgstr "ชุดเสียงนำทาง"
+
+msgid "&Typing sound theme:"
+msgstr "ชุดเสียง&พิมพ์:"
+
+msgid "Typing sound theme"
+msgstr "ชุดเสียงพิมพ์"
+
+msgid "&Keyboard sound theme:"
+msgstr "ชุดเสียง&คีย์บอร์ด:"
+
+msgid "Keyboard sound theme"
+msgstr "ชุดเสียงคีย์บอร์ด"
+
+msgid "&Enable Sound Themes"
+msgstr "&เปิดใช้งาน Sound Themes"
+
+msgid "Play &navigation sounds"
+msgstr "เล่นเสียง&นำทาง"
+
+msgid "Play &typing sounds"
+msgstr "เล่นเสียง&พิมพ์"
+
+msgid "Play &keyboard sounds (turns off navigation and typing)"
+msgstr "เล่นเสียง&คีย์บอร์ด (ปิดเสียงนำทางและเสียงพิมพ์)"
+
+msgid "Play &system sounds, including lock and unlock"
+msgstr "เล่นเสียง&ระบบ รวมถึงล็อกและปลดล็อกหน้าจอ"
+
+msgid "Play a sound when speech is paused (except by Shift)"
+msgstr "เล่นเสียงเมื่อพักเสียงพูด (ยกเว้นการกด Shift)"
+
+msgid "Play sounds on mouse &hover"
+msgstr "เล่นเสียงเมื่อ&ชี้เมาส์"
+
+msgid "Only play typing sounds in &text fields"
+msgstr "เล่นเสียงพิมพ์เฉพาะใน&ช่องข้อความ"
+
+msgid "Play sounds when &moving with arrow keys"
+msgstr "เล่นเสียงเมื่อ&เลื่อนด้วยปุ่มลูกศร"
+
+msgid "Announce the &type of selected control"
+msgstr "อ่าน&ประเภทของส่วนควบคุมที่เลือก"
+
+msgid "Announce the &state of selected control"
+msgstr "อ่าน&สถานะของส่วนควบคุมที่เลือก"
+
+msgid "Mouse hover &delay (milliseconds):"
+msgstr "&ระยะเวลาก่อนเล่นเสียงเมื่อชี้เมาส์ (มิลลิวินาที):"
+
+msgid "Mouse hover delay"
+msgstr "ระยะเวลาก่อนเล่นเสียงเมื่อชี้เมาส์"
+
+msgid "Effect &volume (0 to 100):"
+msgstr "&ระดับความดังของเสียง (0 ถึง 100):"
+
+msgid "Effect volume"
+msgstr "ระดับความดังของเสียง"
+
+msgid "&Manage sound themes..."
+msgstr "&จัดการชุดเสียง..."
+
+msgid "&Open sound folders"
+msgstr "&เปิดโฟลเดอร์ชุดเสียง"
+
+msgid "Check for Sound Themes &updates when NVDA starts"
+msgstr "ตรวจหา&อัปเดต Sound Themes เมื่อเปิด NVDA"
+
+msgid "Check for &updates now"
+msgstr "ตรวจหา&อัปเดตตอนนี้"
+
+msgid "Sound Themes settings"
+msgstr "ตั้งค่า Sound Themes"
+
+msgid "Manage sound themes"
+msgstr "จัดการชุดเสียง"
+
+msgid "Navigation"
+msgstr "เสียงนำทาง"
+
+msgid "Typing"
+msgstr "เสียงพิมพ์"
+
+msgid "Keyboard Sounds"
+msgstr "เสียงคีย์บอร์ด"
+
+msgid "&Close"
+msgstr "&ปิด"
+
+msgid "Available sound themes:"
+msgstr "ชุดเสียงที่มี:"
+
+msgid "Available sound themes"
+msgstr "รายการชุดเสียง"
+
+msgid "&How the keyboard sound plays:"
+msgstr "&รูปแบบการเล่นเสียงคีย์บอร์ด:"
+
+msgid "Two layers: separate sounds for pressing and releasing"
+msgstr "สองเลเยอร์: เสียงกดและเสียงปล่อยแยกไฟล์"
+
+msgid "One layer: one sound includes pressing and releasing"
+msgstr "เลเยอร์เดียว: เสียงกดและปล่อยรวมในไฟล์เดียว"
+
+msgid "Playback mode for selected keyboard preset"
+msgstr "รูปแบบการเล่นเสียงของชุดคีย์บอร์ดที่เลือก"
+
+msgid "&Create or copy a theme..."
+msgstr "&สร้างหรือคัดลอกชุดเสียง..."
+
+msgid "&Edit sounds..."
+msgstr "&แก้ไขเสียง..."
+
+msgid "Re&name..."
+msgstr "เปลี่ยน&ชื่อ..."
+
+msgid "&Delete..."
+msgstr "&ลบ..."
+
+msgid "&Import theme..."
+msgstr "&นำเข้าชุดเสียง..."
+
+msgid "E&xport theme..."
+msgstr "&ส่งออกชุดเสียง..."
+
+msgid "&Use this theme"
+msgstr "&ใช้ชุดเสียงนี้"
+
+msgid "&Restore removed presets..."
+msgstr "&คืนค่าชุดเสียงที่นำออก..."
+
+msgid "Select a sound theme first"
+msgstr "กรุณาเลือกชุดเสียงก่อน"
+
+msgid "Create sound theme"
+msgstr "สร้างชุดเสียง"
+
+msgid "Copy built-in theme to edit"
+msgstr "คัดลอกชุดเสียงเพื่อนำไปแก้ไข"
+
+msgid "Built-in sound packs cannot be renamed"
+msgstr "ไม่สามารถเปลี่ยนชื่อชุดเสียงที่ติดตั้งมาด้วยได้"
+
+msgid "Rename sound theme"
+msgstr "เปลี่ยนชื่อชุดเสียง"
+
+msgid "Remove this built-in preset from your list? You can restore it later."
+msgstr "นำชุดเสียงนี้ออกจากรายการหรือไม่ คุณสามารถคืนค่าภายหลังได้"
+
+msgid "Delete this personal theme permanently?"
+msgstr "ลบชุดเสียงนี้อย่างถาวรหรือไม่"
+
+msgid "Confirm deletion"
+msgstr "ยืนยันการลบ"
+
+msgid "No removed built-in presets to restore."
+msgstr "ไม่มีชุดเสียงที่นำออกไว้ให้คืนค่า"
+
+msgid "Restore presets"
+msgstr "คืนค่าชุดเสียง"
+
+msgid "Choose a preset to restore:"
+msgstr "เลือกชุดเสียงที่ต้องการคืนค่า:"
+
+msgid "Import theme ZIP"
+msgstr "นำเข้าชุดเสียงจาก ZIP"
+
+msgid "Name imported theme"
+msgstr "ตั้งชื่อชุดเสียงที่นำเข้า"
+
+msgid "Export sound theme"
+msgstr "ส่งออกชุดเสียง"
+
+#, python-format
+msgid "Edit sound theme: %s"
+msgstr "แก้ไขชุดเสียง: %s"
+
+#, python-format
+msgid "%s (%s)"
+msgstr "%s (%s)"
+
+msgid "Choose a &sound to customize:"
+msgstr "เลือก&เสียงที่ต้องการแก้ไข:"
+
+msgid "Sound events"
+msgstr "รายการเสียง"
+
+msgid "When this sound is played:"
+msgstr "เสียงนี้เล่นเมื่อใด:"
+
+msgid "Description of selected sound event"
+msgstr "คำอธิบายเสียงที่เลือก"
+
+msgid "Speak the event description when moving through the list"
+msgstr "อ่านคำอธิบายเมื่อเลื่อนรายการเสียง"
+
+msgid "Current sound: none"
+msgstr "เสียงปัจจุบัน: ไม่มี"
+
+msgid "Key release sound: none"
+msgstr "เสียงปล่อยปุ่ม: ไม่มี"
+
+msgid "Press a key in the field below to select and preview its sound:"
+msgstr "กดปุ่มในช่องด้านล่างเพื่อเลือกและฟังเสียงตัวอย่าง:"
+
+msgid "Capture and preview a physical key"
+msgstr "ช่องกดปุ่มเพื่อเลือกเสียงคีย์บอร์ด"
+
+msgid "Press a key to find it; use Tab to move to the next control"
+msgstr "กดปุ่มเพื่อค้นหาเสียง ใช้ Tab เพื่อไปยังรายการถัดไป"
+
+msgid "&Choose sound file..."
+msgstr "&เลือกไฟล์เสียง..."
+
+msgid "Choose key &release sound..."
+msgstr "เลือกเสียง&ปล่อยปุ่ม..."
+
+msgid "Preview release sound"
+msgstr "ฟังเสียงปล่อยปุ่ม"
+
+msgid "Remove release sound"
+msgstr "นำเสียงปล่อยปุ่มออก"
+
+msgid "Add another sound &variation..."
+msgstr "เพิ่มเสียง&ทางเลือก..."
+
+msgid "&Preview"
+msgstr "&ฟังตัวอย่าง"
+
+msgid "&Remove assignment"
+msgstr "&นำเสียงที่กำหนดออก"
+
+msgid "&Done"
+msgstr "&เสร็จสิ้น"
+
+msgid "&Cancel"
+msgstr "&ยกเลิก"
+
+msgid "You have unsaved sound changes. Discard them and close this editor?"
+msgstr "คุณแก้ไขเสียงไว้แต่ยังไม่ได้กดเสร็จสิ้น ต้องการทิ้งการเปลี่ยนแปลงและปิดหน้าต่างหรือไม่? เลือก No เพื่อแก้ไขต่อ หรือ Yes เพื่อทิ้งการเปลี่ยนแปลง"
+
+msgid "Discard sound changes?"
+msgstr "ยืนยันการทิ้งการแก้ไขเสียง"
+
+#, python-format
+msgid "%d sound variations"
+msgstr "เสียงทางเลือก %d ไฟล์"
+
+msgid "none (fallback may apply)"
+msgstr "ไม่มี (อาจใช้เสียงสำรอง)"
+
+#, python-format
+msgid "Current sound: %s"
+msgstr "เสียงปัจจุบัน: %s"
+
+#, python-format
+msgid "Key release sound: %s"
+msgstr "เสียงปล่อยปุ่ม: %s"
+
+msgid "none"
+msgstr "ไม่มี"
+
+#, python-format
+msgid "Key: %s"
+msgstr "ปุ่ม: %s"
+
+msgid "Choose uncompressed WAV"
+msgstr "เลือกไฟล์เสียง WAV"
+
+msgid "No sound is assigned to this event"
+msgstr "ยังไม่ได้กำหนดเสียงให้รายการนี้"
+
+msgid "Preview"
+msgstr "ฟังตัวอย่าง"
+
+msgid "Sound Themes &settings..."
+msgstr "ตั้งค่า Sound Themes... (&S)"
+
+msgid "Could not open Sound Themes settings. Please check the NVDA log."
+msgstr "ไม่สามารถเปิดหน้าต่างตั้งค่า Sound Themes ได้ โปรดตรวจสอบบันทึกของ NVDA"
+
+msgid "Toggle navigation sounds; press twice to toggle typing sounds"
+msgstr "เปิดหรือปิดเสียงนำทาง กดสองครั้งเพื่อเปิดหรือปิดเสียงพิมพ์"
+
+#, python-format
+msgid "%s sounds %s"
+msgstr "เสียง%s: %s"
+
+msgid "on"
+msgstr "เปิด"
+
+msgid "off"
+msgstr "ปิด"
+
+msgid "Toggle all sound themes"
+msgstr "เปิดหรือปิดเสียง Sound Themes ทั้งหมด"
+
+#, python-format
+msgid "Sound Themes %s"
+msgstr "Sound Themes: %s"
+
+msgid "No sound themes found"
+msgstr "ไม่พบชุดเสียง"
+
+#, python-format
+msgid "Sound theme: %s"
+msgstr "ชุดเสียง: %s"
+
+msgid "Previous sound theme"
+msgstr "เลือกชุดเสียงก่อนหน้า"
+
+msgid "Next sound theme"
+msgstr "เลือกชุดเสียงถัดไป"
+
+msgid "A Sound Themes update check is already running."
+msgstr "กำลังตรวจหาอัปเดต Sound Themes อยู่แล้ว"
+
+msgid "Checking for Sound Themes updates..."
+msgstr "กำลังตรวจหาอัปเดต Sound Themes..."
+
+msgid "Could not check Sound Themes updates."
+msgstr "ไม่สามารถตรวจหาอัปเดต Sound Themes ได้"
+
+#, python-format
+msgid "Sound Themes %s is up to date."
+msgstr "Sound Themes รุ่น %s เป็นรุ่นล่าสุดแล้ว"
+
+#, python-brace-format
+msgid "Sound Themes {new} is available (installed: {old}).\n\nExport any customized sound packs to ZIP before updating: installing a new add-on can overwrite WAV edits stored inside it.\n\nDownload and install it using NVDA's installer? NVDA will ask for confirmation and a restart."
+msgstr "มี Sound Themes รุ่น {new} (ติดตั้งอยู่: {old})\n\nโปรดส่งออกชุดเสียงที่แก้ไขเป็น ZIP ก่อนอัปเดต เพราะการติดตั้งส่วนเสริมใหม่อาจแทนที่ไฟล์เสียงที่ปรับแต่ง\n\nต้องการดาวน์โหลดและติดตั้งหรือไม่ NVDA จะขอคำยืนยันและให้เริ่มโปรแกรมใหม่"
+
+msgid "Sound Themes update"
+msgstr "อัปเดต Sound Themes"
+
+msgid "&Update now"
+msgstr "&อัปเดตตอนนี้"
+
+msgid "&Later"
+msgstr "&ไว้ภายหลัง"
+
+msgid "&Skip this version"
+msgstr "&ข้ามรุ่นนี้"
+
+#, python-format
+msgid "Downloading Sound Themes %s..."
+msgstr "กำลังดาวน์โหลด Sound Themes รุ่น %s..."
+
+msgid "Could not download or verify the Sound Themes update."
+msgstr "ไม่สามารถดาวน์โหลดหรือตรวจสอบไฟล์อัปเดต Sound Themes ได้"
+
+msgid "&Sound playback report..."
+msgstr "รายงานการเล่นเสียง... (&R)"
+
+msgid "Sound playback report"
+msgstr "รายงานการเล่นเสียง"
+
+#, python-brace-format
+msgid ""
+"Input sounds waiting: {queuedInput}\n"
+"Other sounds waiting: {queuedOther}\n"
+"Input sounds skipped during overload: {skippedInput}\n"
+"Other sounds skipped during overload: {skippedOther}\n\n"
+"These counts are since NVDA started. Rapid focus changes may be skipped intentionally."
+msgstr ""
+"เสียงพิมพ์และคีย์บอร์ดที่รอเล่น: {queuedInput}\n"
+"เสียงอื่นที่รอเล่น: {queuedOther}\n"
+"เสียงพิมพ์และคีย์บอร์ดที่ข้ามเมื่อระบบมีงานหนาแน่น: {skippedInput}\n"
+"เสียงอื่นที่ข้ามเมื่อระบบมีงานหนาแน่น: {skippedOther}\n\n"
+"เป็นจำนวนที่นับตั้งแต่เริ่ม NVDA การเลื่อนโฟกัสอย่างรวดเร็วอาจทำให้ข้ามเสียงบางรายการโดยตั้งใจ"

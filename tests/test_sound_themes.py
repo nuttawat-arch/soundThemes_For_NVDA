@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib
 import importlib.util
 import ast
+import gettext
 import io
 import json
 import shutil
@@ -167,6 +168,27 @@ class SoundThemeTests(unittest.TestCase):
         self.assertIn("self.keys.note_typing_special(special)", plugin)
         self.assertIn("self.keys.consume_typing_special(event)", plugin)
         self.assertNotIn("self._ensure_keyboard_theme()", plugin)
+
+    def test_typing_sounds_no_longer_fire_for_desktop_character_navigation(self):
+        source = ast.parse((PACKAGE_ROOT / "__init__.py").read_text(encoding="utf-8"))
+        plugin = next(node for node in source.body if isinstance(node, ast.ClassDef)
+                      and node.name == "GlobalPlugin")
+        typing_allowed = next(node for node in plugin.body if isinstance(node, ast.FunctionDef)
+                              and node.name == "_typing_allowed")
+        namespace = {}
+        exec(compile(ast.Module(body=[typing_allowed], type_ignores=[]),
+                     "<typing-policy>", "exec"), namespace)
+        allow = namespace["_typing_allowed"]
+        desktop = object()
+        textbox = object()
+        fake = types.SimpleNamespace(setting=lambda name: True,
+                                     _focused_editable=lambda obj: textbox if obj is textbox else None)
+        self.assertFalse(allow(fake, desktop))
+        self.assertTrue(allow(fake, textbox))
+        plugin_source = (PACKAGE_ROOT / "__init__.py").read_text(encoding="utf-8")
+        self.assertIn('"onlyEditable": "boolean(default=true)"', plugin_source)
+        self.assertIn('if not config.conf[SECTION]["typingScopeMigrated"]:', plugin_source)
+        self.assertIn('config.conf[SECTION]["onlyEditable"] = True', plugin_source)
         ui_source = (PACKAGE_ROOT / "settings.py").read_text(encoding="utf-8")
         self.assertNotIn("Import old sounds &folder", ui_source)
         self.assertIn("Restore removed presets", ui_source)
@@ -937,18 +959,42 @@ class SoundThemeTests(unittest.TestCase):
         store.assign(original, "role.button", self.sample)
         trial = edit_session.ThemeEditSession(store, original)
         self.assertIsNone(trial._backup)  # Browsing alone touches no WAVs.
+        self.assertFalse(trial.has_changes())
         trial.prepare_edit()
+        self.assertFalse(trial.has_changes())
         store.assign(original, "role.checkbox", self.sample)
+        self.assertTrue(trial.has_changes())
         store.assign(original, "role.button", None)
         self.assertIsNone(store.sound_for(original, "role.button"))
         trial.rollback()
+        self.assertFalse(trial.has_changes())
         self.assertIsNone(store.sound_for(original, "role.checkbox"))
         self.assertIsNotNone(store.sound_for(original, "role.button"))
         final = edit_session.ThemeEditSession(store, original)
         final.prepare_edit()
         store.assign(original, "role.checkbox", self.sample)
+        self.assertTrue(final.has_changes())
         final.commit()
+        self.assertFalse(final.has_changes())
         self.assertIsNotNone(store.sound_for(original, "role.checkbox"))
+
+    def test_editor_change_detection_does_not_need_missing_nvda_filecmp_module(self):
+        before = self.home / "before.wav"
+        after = self.home / "after.wav"
+        before.write_bytes(self.sample.read_bytes())
+        after.write_bytes(before.read_bytes())
+        self.assertTrue(edit_session._same_file_bytes(before, after))
+        contents = bytearray(after.read_bytes())
+        contents[-1] ^= 1
+        after.write_bytes(contents)  # Same length; byte-content check still catches edits.
+        self.assertFalse(edit_session._same_file_bytes(before, after))
+        source_path = PACKAGE_ROOT / "theme_edit_session.py"
+        self.assertNotIn("import filecmp", source_path.read_text(encoding="utf-8"))
+        spec = importlib.util.spec_from_file_location("nvda_sound_testpackage.no_filecmp", source_path)
+        module = importlib.util.module_from_spec(spec)
+        with patch.dict(sys.modules, {"filecmp": None}):
+            spec.loader.exec_module(module)  # Would fail on the user's NVDA build before this fix.
+        self.assertTrue(module._same_file_bytes(before, before))
 
     def test_new_screenreader_multitheme_archive_prioritizes_inner_voiceover_and_talkback(self):
         outer = self.home / "screenreader2.zip"
@@ -1091,7 +1137,7 @@ class SoundThemeTests(unittest.TestCase):
         ui_source = (PACKAGE_ROOT / "settings.py").read_text(encoding="utf-8")
         plugin = (PACKAGE_ROOT / "__init__.py").read_text(encoding="utf-8")
         self.assertIn("self.playback_mode", ui_source)
-        self.assertIn("Replace key &release WAV", ui_source)
+        self.assertIn("Choose key &release sound", ui_source)
         self.assertIn("self._keyboard_playback_mode", plugin)
         self.assertIn("self.keys.transition_physical(", plugin)
         self.assertIn("cue_for_transition(event, pressed, changed", plugin)
@@ -1184,6 +1230,62 @@ class SoundThemeTests(unittest.TestCase):
         audio.AudioEngine.play(fake, "role.button", 0)
         audio.AudioEngine.play(fake, "role.listitem", 0)
         self.assertEqual(fake._queue.get_nowait()[1], b"new")
+
+    def test_keyboard_and_typing_sound_queue_survives_navigation_overload(self):
+        """A flood of browser/focus events must not evict all keyboard clicks."""
+        fake = audio.AudioEngine.__new__(audio.AudioEngine)
+        fake._last_played = {}
+        fake._queue = queue.Queue(maxsize=1)
+        fake._urgent_queue = queue.Queue(maxsize=2)
+        fake._closed = threading.Event()
+        fake._dropped_navigation = 0
+        fake._dropped_input = 0
+        fake._sounds = {
+            "role.button": [((1, 16, 22050), b"old-navigation")],
+            "role.listitem": [((1, 16, 22050), b"new-navigation")],
+        }
+        fake._typing_sounds = {"key.character": [((1, 16, 22050), b"typing")]}
+        fake._keyboard_sounds = {"keyboard.a": [((1, 16, 22050), b"keyboard")]}
+        fake.play("role.button", 0)
+        fake.play("role.listitem", 0)
+        fake.play("key.character", 0)
+        fake.play("keyboard.a", 0)
+        self.assertEqual(fake._queue.get_nowait()[1], b"new-navigation")
+        self.assertEqual([fake._urgent_queue.get_nowait()[1] for _ in range(2)],
+                         [b"typing", b"keyboard"])
+        self.assertEqual(fake._dropped_navigation, 1)
+        self.assertEqual(fake._dropped_input, 0)
+        for _ in range(3):
+            fake.play("key.character", 0)
+        stats = fake.diagnostics()
+        self.assertEqual(stats["queuedInput"], 2)
+        self.assertEqual(stats["skippedInput"], 1)
+        self.assertEqual(stats["skippedOther"], 1)
+
+    def test_playback_worker_dispatches_key_before_queued_navigation_sound(self):
+        """Ordering is enforced in the worker, not merely by two queues."""
+        fake = audio.AudioEngine.__new__(audio.AudioEngine)
+        fake._queue = queue.Queue(maxsize=2)
+        fake._urgent_queue = queue.Queue(maxsize=2)
+        fake._closed = threading.Event()
+        fake._dropped_navigation = 0
+        fake._dropped_input = 0
+        fake._output_device = lambda: "mock-output"
+        fake._log = types.SimpleNamespace(warning=lambda *args: None)
+        fake._queue.put_nowait(((1, 16, 22050), b"navigation"))
+        fake._urgent_queue.put_nowait(((1, 16, 22050), b"keyboard"))
+        heard = []
+
+        class OneVoice:
+            def offer(self, sound, device):
+                heard.append((sound[1], device))
+                fake._closed.set()
+                return True
+
+        fake._voices = [OneVoice()]
+        fake._run()
+        self.assertEqual(heard, [(b"keyboard", "mock-output")])
+        self.assertEqual(fake._queue.get_nowait()[1], b"navigation")
 
     def test_multiple_long_effects_play_simultaneously_without_interrupting(self):
         """Navigation, typing and keyboard audio use distinct running streams."""
@@ -1350,6 +1452,50 @@ class UpdatesAndReleaseTests(unittest.TestCase):
         self.assertIn('class SoundSettingsDialog(wx.Dialog)', settings)
         self.assertIn('"checkForUpdates"', plugin)
         self.assertIn('plugin._updater.check(manual=True)', settings)
+
+    def test_escape_and_keyboard_navigation_in_sound_management(self):
+        source = (PACKAGE_ROOT / "settings.py").read_text(encoding="utf-8")
+        self.assertIn('wx.Button(self, wx.ID_CANCEL, _("&Close"))', source)
+        self.assertGreaterEqual(source.count("self.SetEscapeId(wx.ID_CANCEL)"), 2)
+        self.assertIn("self.SetEscapeId(wx.ID_NONE)", source)
+        self.assertIn('if event.GetKeyCode() == wx.WXK_ESCAPE:', source)
+        self.assertIn('if event.GetKeyCode() == wx.WXK_TAB:', source)
+        self.assertIn('self.Bind(wx.EVT_CHAR_HOOK, self.on_escape)', source)
+        self.assertIn('self.on_cancel(event)', source)
+        self.assertIn('self.session.rollback()', source)
+        self.assertIn('wx.YES_NO | wx.NO_DEFAULT | wx.ICON_WARNING', source)
+        self.assertIn('has_changes = self.session.has_changes()', source)
+
+    def test_thai_translations_and_localized_addon_help(self):
+        mo = ROOT / "locale/th/LC_MESSAGES/nvda.mo"
+        with mo.open("rb") as stream:
+            translator = gettext.GNUTranslations(stream)
+        phrases = {
+            "Sound Themes &settings...": "ตั้งค่า Sound Themes... (&S)",
+            "&Close": "&ปิด",
+            "&Cancel": "&ยกเลิก",
+            "Keyboard Sounds": "เสียงคีย์บอร์ด",
+            "Two layers: separate sounds for pressing and releasing":
+                "สองเลเยอร์: เสียงกดและเสียงปล่อยแยกไฟล์",
+            "Discard sound changes?": "ยืนยันการทิ้งการแก้ไขเสียง",
+            "Could not open Sound Themes settings. Please check the NVDA log.":
+                "ไม่สามารถเปิดหน้าต่างตั้งค่า Sound Themes ได้ โปรดตรวจสอบบันทึกของ NVDA",
+        }
+        for english, thai in phrases.items():
+            self.assertEqual(translator.gettext(english), thai)
+        for lang, marker in (("th", "คู่มือ Sound Themes"),
+                             ("en", "Sound Themes for NVDA")):
+            doc = (ROOT / "doc" / lang / "readme.html").read_text(encoding="utf-8")
+            self.assertIn(f'<html lang="{lang}">', doc)
+            self.assertIn(marker, doc)
+            for anchor in ("start", "modes", "manager", "editor", "keyboard",
+                           "shortcuts", "updates", "help"):
+                self.assertIn(f'id="{anchor}"', doc)
+        manifest = (ROOT / "manifest.ini").read_text(encoding="utf-8")
+        self.assertIn('docFileName = "readme.html"', manifest)
+        self.assertTrue((ROOT / "locale/th/manifest.ini").is_file())
+        build = (ROOT / "scripts/build.py").read_text(encoding="utf-8")
+        self.assertIn('"locale"', build)
 
     def test_local_release_script_is_explicitly_excluded_but_build_remains_automatic(self):
         self.assertTrue((ROOT / "release.ps1").is_file())

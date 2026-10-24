@@ -1,4 +1,20 @@
-# Original add-ons → Sound Themes for NVDA 0.15.0
+# Original add-ons → Sound Themes for NVDA 0.17.0
+
+## v0.17.0 regression review
+
+- Compared archived installer Python sources for 0.13 → 0.14 → 0.15 → 0.16 against the current candidate. From 0.14 onward the playback engine did not change; recent settings/import regressions were not caused by a new audio library. Typing outside text fields came from the previous `onlyEditable=false` policy and the initial 0.16 build did not include the late repair. Event handlers for focus, browsing, typed characters, keypresses, caret and selected items remain present.
+- Retained NVDA's `nvwave.WavePlayer` output device integration. Added dedicated input and navigation playback queues with a limit and a user-facing skip report for real-world investigations. Because a queue can still overload and Windows may not send an event, zero audio omissions are not guaranteed.
+- The attached general-purpose `skills.zip` does not supply an NVDA sound library or a required runtime module. See `DEPENDENCY_POLICY.md` for how to include future third-party modules safely.
+
+## Post-release-candidate Windows log findings (unpublished)
+
+- Confirmed user-reported Tools dialog error on NVDA 2026.2: `ModuleNotFoundError: No module named 'filecmp'` upon importing the editor's rollback helper. The actual dialog constructor was never reached. Local chunked WAV comparison avoids this missing standard-library module without touching NVDA input or sound events. The add-on's new error boundary remains helpful for other runtime failures.
+- Desktop key clicks with Typing Sounds (not Keyboard Sounds) stemmed from `onlyEditable` being false on fresh and existing configurations, allowing `event_typedCharacter` outside editable controls. The new default and one-time migration set it true. Users can change it afterwards; dedicated Keyboard Sounds still plays physical keys globally if enabled.
+- Added two independent regressions for these exact failures; now 76 offline tests pass. Need Windows NVDA re-test to certify actual Tools modal opening and the Desktop typing behavior.
+
+## v0.16.0 UI and language audit
+
+No underlying navigation, typing or keyboard event routing was altered. Sound manager Escape now maps to wx's standard Cancel dialog action; Escape from the keyboard capture field performs the editor's existing rollback, and Tab leaves that field so keyboard-only navigation remains available. The event list preserves source-compatible filenames. NVDA's standard gettext domain has a compiled Thai catalog; English is the fallback. HTML Help remains under `doc/<language>/readme.html` according to NVDA's add-on documentation conventions. These are source-level changes pending live Windows/NVDA confirmation.
 
 ## v0.15.0 Tools access, stable-GitHub update safeguards and duplicate-audio check
 

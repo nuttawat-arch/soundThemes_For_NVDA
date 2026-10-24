@@ -24,6 +24,8 @@ from logHandler import log
 
 from .release_info import LATEST_RELEASE_URL, MAX_INSTALLER_BYTES, is_newer, validated_release
 
+addonHandler.initTranslation()
+
 
 TIMEOUT_SECONDS = 20
 STARTUP_DELAY_MS = 15000

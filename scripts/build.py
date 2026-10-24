@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 VERSION = next(line.split('"')[1] for line in (ROOT / "manifest.ini").read_text(encoding="utf-8").splitlines()
                if line.startswith("version = "))
 DESTINATION = ROOT / f"SoundThemesForNVDA-{VERSION}.nvda-addon"
-INCLUDE = ("manifest.ini", "globalPlugins", "doc")
+INCLUDE = ("manifest.ini", "globalPlugins", "doc", "locale")
 
 
 def build():

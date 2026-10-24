@@ -1,4 +1,12 @@
-# Sound Themes for NVDA — Keyboard Sounds (v0.16.0)
+# Sound Themes for NVDA — Keyboard Sounds (v0.17.0)
+
+From v0.16.0 onward, **Escape closes the manager**, and **Escape inside the
+keyboard-capture field asks before discarding edited sounds**. Choose **No**
+(the default) to continue editing or **Yes** to revert the changes and exit.
+An unchanged editor closes directly without a warning.
+**Tab moves focus normally** instead of being trapped in the capture field;
+select the Tab entry from the event list to customize that key. The add-on
+includes native Thai labels and language-matched Help for Thai and English.
 
 Open the Sound Themes settings directly from **NVDA menu → Tools → Sound Themes settings...**; it no longer appears as a page inside NVDA's global Settings dialog. Under that standalone window, **Check for updates now** uses official GitHub Releases without needing to submit to the Add-on Store. The local developer-only `release.ps1` automates creating future tagged releases but is never included in the add-on or source ZIP.
 
@@ -61,8 +69,8 @@ The Windows virtual-key catalog includes 1–255, A–Z, 0–9, punctuation, lef
 2. Choose **Manage sound themes** (only one main management button).
 3. Use the notebook tabs: **Navigation**, **Typing**, **Keyboard Sounds**. Select the keyboard tab.
 4. Select any theme and choose **Edit sounds**, **Rename**, or **Delete** directly. There are no protected built-in themes. Create or copy a pack only if you want another one.
-5. The editor shows **one alphabetical event list**, without category/group dropdowns. Its items have familiar short names such as `checkbox`, `text`, `A`, and `Shift`. Alternatively, Tab to **Capture and preview a physical key** and press the exact key. Capture operates only while its field has focus; `Esc` inside capture is a key assignment.
-6. Choose **Replace WAV** for a press/combined sample, or **Replace key release WAV** for a separate release click. The editor saves them as `keyboard.f7.wav` and `keyboard.f7__release.wav`, regardless of source filename. Separate Preview and Remove controls are provided for the release. **No random variations** are allowed in keyboard themes.
+5. The editor shows **one alphabetical event list**, without category/group dropdowns. Its items have familiar short names such as `checkbox`, `text`, `A`, and `Shift`. Alternatively, Tab to **Capture and preview a physical key** and press the exact key. Capture operates only while its field has focus; **Escape asks before discarding changed sounds, and Tab moves on**. Select Tab itself from the event list.
+6. Choose **Choose sound file** for a press/combined sample, or **Choose key release sound** for a separate release click. The editor saves them as `keyboard.f7.wav` and `keyboard.f7__release.wav`, regardless of source filename. Separate Preview and Remove controls are provided for the release. **No random variations** are allowed in keyboard themes.
 7. Choose **Done** to save edits or **Cancel** to revert edits made in that editor session, including WAV removal/replacement. **Use this theme**, close the manager, choose it in **Keyboard sound theme** and tick **Keyboard Sounds**. The **Open sound folders** button opens the add-on's embedded `effects` directory, containing all three sound categories.
 
 Source pack import also recognizes canonical `keyboard.a.wav`, `a.wav`, `KeyA.wav`, `Digit1.wav`, `ShiftLeft.wav`, `ArrowUp.wav` and similar unambiguous filenames. Ambiguous filenames are **not randomly assigned**: choose their intended key in the editor instead.

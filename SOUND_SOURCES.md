@@ -1,4 +1,6 @@
-# Sound provenance and merger status — v0.16.0 (2026-10-24)
+# Sound provenance and merger status — v0.17.0 (2026-10-24)
+
+Version 0.17.0 improves sound-queue dispatch and adds a playback report. All previous 1,398 imported original WAV files and their mappings remain intact. Version 0.16.0 changed user-interface wording, keyboard focus navigation and localization.
 
 Version 0.15.0 does not add or remove any supplied audio files. The user reported that `typing/iphone-keyboard` and `typing/voiceover` sound alike. We verified all three matching event WAVs (`key.character`, `key.space`, `key.backspace`) have **different SHA-256 content hashes**, and both sets use different PCM bit depths (iPhone 16-bit, VoiceOver 24-bit). Decoding their typing-character WAVs at 44.1 kHz gives a near-zero sample-to-sample waveform correlation, not matching audio with only different metadata. The sound *style* may be similar, but deleting one would remove distinguishable original recordings. Both remain independently user-editable/deletable and are **not** combined or removed by the release.
 

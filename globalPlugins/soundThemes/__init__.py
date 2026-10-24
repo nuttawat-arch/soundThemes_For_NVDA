@@ -44,7 +44,11 @@ config.conf.spec[SECTION] = {
     "mouse": "boolean(default=false)",
     "hoverDelay": "integer(default=270)",
     "arrowNavSounds": "boolean(default=true)",
-    "onlyEditable": "boolean(default=false)",
+    "onlyEditable": "boolean(default=true)",
+    # v0.16 before the hotfix played typing sounds on the desktop by default.
+    # One-time migration restores typing-in-editors only for existing profiles;
+    # the user can explicitly change the checkbox afterwards.
+    "typingScopeMigrated": "boolean(default=false)",
     "sayRoles": "boolean(default=true)",
     "sayStates": "boolean(default=true)",
     "volume": "integer(default=65)",
@@ -101,6 +105,13 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         self._speech_original = None
         self._speech_wrapper = None
         self._role_speech_module = None
+        # Typing Sounds is for entering text. Previously a fresh or upgraded
+        # installation defaulted to playing on every typedCharacter event,
+        # including Desktop/list quick search. Keyboard Sounds remains the
+        # intentional mode for actual physical key sounds everywhere.
+        if not config.conf[SECTION]["typingScopeMigrated"]:
+            config.conf[SECTION]["onlyEditable"] = True
+            config.conf[SECTION]["typingScopeMigrated"] = True
         # One package root for *all* sound packs. Never create the former
         # user-config/soundThemes/effects folder; it is read only for one-time
         # migration of older user's custom audio and preferences.
@@ -177,22 +188,48 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
     def _on_tools_settings(self, evt):
         # Wait for the native menu to close before opening a modal dialog.
-        wx.CallAfter(self._show_settings)
+        try:
+            wx.CallAfter(self._show_settings)
+        except Exception:
+            log.error("Sound Themes: could not schedule the settings window", exc_info=True)
+            ui.message(_("Could not open Sound Themes settings. Please check the NVDA log."))
 
     def _show_settings(self):
         if self._closed or self._settings_open:
             return
-        from .settings import SoundSettingsDialog
         self._settings_open = True
-        gui.mainFrame.prePopup()
+        dialog = None
+        popup_started = False
         try:
+            from .settings import SoundSettingsDialog
+            gui.mainFrame.prePopup()
+            popup_started = True
             dialog = SoundSettingsDialog(gui.mainFrame, self)
+            dialog.ShowModal()
+        except Exception:
+            # Unhandled wx errors previously made the Tools command appear to
+            # do nothing. Always log the traceback and tell the user.
+            log.error("Sound Themes: could not open the settings window", exc_info=True)
             try:
-                dialog.ShowModal()
-            finally:
-                dialog.Destroy()
+                wx.MessageBox(
+                    _("Could not open Sound Themes settings. Please check the NVDA log."),
+                    _("Sound Themes"),
+                    wx.OK | wx.ICON_ERROR,
+                    gui.mainFrame,
+                )
+            except Exception:
+                ui.message(_("Could not open Sound Themes settings. Please check the NVDA log."))
         finally:
-            gui.mainFrame.postPopup()
+            if dialog is not None:
+                try:
+                    dialog.Destroy()
+                except Exception:
+                    log.error("Sound Themes: could not destroy the settings window", exc_info=True)
+            if popup_started:
+                try:
+                    gui.mainFrame.postPopup()
+                except Exception:
+                    log.error("Sound Themes: could not restore the NVDA window", exc_info=True)
             self._settings_open = False
 
     def _register(self, point, callback):
