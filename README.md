@@ -1,4 +1,4 @@
-# Sound Themes for NVDA 0.15.0
+# Sound Themes for NVDA 0.16.0
 
 **New in 0.15.0:** Open the complete Sound Themes settings window directly
 from **NVDA menu → Tools → Sound Themes settings...**. It is no longer buried

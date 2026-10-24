@@ -1,4 +1,4 @@
-# Sound Themes for NVDA — Project status v0.15.0 (2026-10-24)
+# Sound Themes for NVDA — Project status v0.16.0 (2026-10-24)
 
 ## Completed in v0.15.0
 

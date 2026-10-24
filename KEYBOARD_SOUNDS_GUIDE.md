@@ -1,4 +1,4 @@
-# Sound Themes for NVDA — Keyboard Sounds (v0.15.0)
+# Sound Themes for NVDA — Keyboard Sounds (v0.16.0)
 
 Open the Sound Themes settings directly from **NVDA menu → Tools → Sound Themes settings...**; it no longer appears as a page inside NVDA's global Settings dialog. Under that standalone window, **Check for updates now** uses official GitHub Releases without needing to submit to the Add-on Store. The local developer-only `release.ps1` automates creating future tagged releases but is never included in the add-on or source ZIP.
 
