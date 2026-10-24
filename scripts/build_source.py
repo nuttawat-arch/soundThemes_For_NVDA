@@ -12,6 +12,7 @@ VERSION = next(
 DESTINATION = ROOT.parent / f"SoundThemesForNVDA-source-{VERSION}.zip"
 OMIT_DIRS = {".git", "__pycache__", ".pytest_cache", ".venv", "venv"}
 OMIT_SUFFIXES = {".pyc", ".tmp", ".nvda-addon"}
+OMIT_FILES = {"release.ps1"}  # Private publishing automation, never distributed.
 
 
 def build():
@@ -20,7 +21,8 @@ def build():
             if not path.is_file():
                 continue
             rel = path.relative_to(ROOT)
-            if any(piece in OMIT_DIRS for piece in rel.parts) or path.suffix in OMIT_SUFFIXES:
+            if (any(piece in OMIT_DIRS for piece in rel.parts)
+                    or path.suffix in OMIT_SUFFIXES or rel.name in OMIT_FILES):
                 continue
             archive.write(path, (Path("soundThemes") / rel).as_posix())
     print(f"Created {DESTINATION} ({DESTINATION.stat().st_size} bytes)")

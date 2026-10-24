@@ -34,6 +34,9 @@ def physical_virtual_key(vk: int, scan_code: int | None = None,
         return 0xA3 if extended else 0xA2
     if vk == 0x12:
         return 0xA5 if extended else 0xA4
+    if vk == 0x0D and extended:
+        # Ordinary Return and Numpad Enter have different physical positions.
+        return 0x100
     return vk
 
 
@@ -47,8 +50,13 @@ class KeyboardState:
 
     def update(self, vk: int, down: bool) -> bool:
         """Return True only for first keydown. Repeated keydown is ignored."""
+        changed = self.transition(vk, down)
+        return bool(down and changed)
+
+    def transition(self, vk: int, down: bool) -> bool:
+        """True only for the first down or first up of a held physical key."""
         with self._lock:
-            first = vk not in self._pressed
+            was_pressed = vk in self._pressed
             if down:
                 self._pressed.add(vk)
                 if vk in NAV_KEYS:
@@ -57,13 +65,20 @@ class KeyboardState:
                     self._last_shift_press = time.monotonic()
             else:
                 self._pressed.discard(vk)
-            return bool(down and first)
+            return not was_pressed if down else was_pressed
 
     def update_physical(self, vk: int, scan_code: int | None,
                         extended: bool, down: bool) -> tuple[bool, int]:
-        """Track raw key transitions under their side-specific physical code."""
+        """Legacy first-keydown API (still used by existing callers/tests)."""
         physical = physical_virtual_key(vk, scan_code, extended)
-        return self.update(physical, down), physical
+        changed = self.transition(physical, down)
+        return bool(down and changed), physical
+
+    def transition_physical(self, vk: int, scan_code: int | None,
+                            extended: bool, down: bool) -> tuple[bool, int]:
+        """One transition for each physical down/up; ignore auto-repeat/stray up."""
+        physical = physical_virtual_key(vk, scan_code, extended)
+        return self.transition(physical, down), physical
 
     def is_pressed(self, vk: int) -> bool:
         with self._lock:

@@ -1,15 +1,23 @@
-# Sound provenance and merger status — v0.9.0 (2026-10-24)
+# Sound provenance and merger status — v0.15.0 (2026-10-24)
+
+Version 0.15.0 does not add or remove any supplied audio files. The user reported that `typing/iphone-keyboard` and `typing/voiceover` sound alike. We verified all three matching event WAVs (`key.character`, `key.space`, `key.backspace`) have **different SHA-256 content hashes**, and both sets use different PCM bit depths (iPhone 16-bit, VoiceOver 24-bit). Decoding their typing-character WAVs at 44.1 kHz gives a near-zero sample-to-sample waveform correlation, not matching audio with only different metadata. The sound *style* may be similar, but deleting one would remove distinguishable original recordings. Both remain independently user-editable/deletable and are **not** combined or removed by the release.
+
+Version 0.14.0 imports both the TalkBack and VoiceOver subdirectories of the user-supplied `ScreenReaderSounds(1).zip`, including nested `voiceover/objdata.zip`. Canonical event names are derived from the original filenames, not synthesized; nested original ScreenReaderSounds samples take priority over flat files for duplicate events, and ScreenReaderSounds recordings take priority over older navSounds recordings where the same event is present. The new import adds **43 WAVs** to the previous 1,355. Existing files are retained when the incoming originals are byte-identical. The 26 packaged audio directories are now **editable presets** rather than protected built-ins. Source formats and licenses must still be honored.
+
+Version 0.13.0 extends the seven real Kliq keyboard packs with their individual `*-up.wav` key-release samples, including only source key names matched to Windows keyboard events. The per-pack counts below include up to two actual fixed fallback recordings, each copied verbatim from the **same source pack**. New `keyboard/bucklespring` contains **209 of 209** original `NN-0.wav` and `NN-1.wav` recordings from the user-supplied `bucklespring-master.zip`; all source scan codes are mapped, with `1` for press and `0` for release exactly as in the author's C code. No sounds were generated, resampled or concatenated. Bucklespring (© 2016 Ico Doornekamp) is published under **GNU General Public License version 2**: the full license is distributed with the add-on at `doc/BUCKLESPRING_LICENSE.txt`; upstream project: https://github.com/zevv/bucklespring . Copies/redistributions of these recordings must comply with their license.
 
 Version 0.9.0 imports the new user-provided `upload/effects.zip`: **86 original navSounds/default and 61 original typing WAVs**. The importer retained **85 unique default navigation events** after mapping both editable-text names to one role; an additional **59 missing event recordings** were copied into the existing VoiceOver navigation pack without replacing any original ScreenReaderSounds files. Eleven new typing folders were created, and the existing Classic Typewriter folder gained its real original carriage-bell cue. No synthesized WAVs were used, and duplicate same-event/same-audio variations were omitted. Version 0.8.0 instant audition is preserved.
 
-All **706 original WAV assets** now reside in the single packaged directory `globalPlugins/soundThemes/effects/`; the old extra `globalPlugins/Sound Themes for NVDA/` asset directory is no longer used. The retained VoiceOver/default copies of the 59 newly covered events are deliberately in two independently selectable sound packs, while duplicate event bindings **inside one pack** were collapsed. The obsolete synthetic sound generator is absent from the source and installer. Runtime playback has up to twelve independent streams with a bounded wait queue; see `FEATURE_AUDIT.md`.
+All **1,398 original WAV assets** reside inside `globalPlugins/soundThemes/effects/`. Editing/renaming/deleting these presets changes the files in the installed add-on. The older external `NVDA user config/soundThemes/effects` directory is **never created by v0.14**: old user packs can be copied from it once during migration, without deleting their source. **Export customized presets as ZIPs before an add-on upgrade, which may overwrite files installed inside the add-on directory.** The obsolete synthetic sound generator remains absent. Runtime playback has up to twelve independent streams with a bounded wait queue; see `FEATURE_AUDIT.md`.
 
-| Built-in sound folder | Genuine WAV files | Origin |
+| Editable sound preset | Genuine WAV files | Origin |
 |---|---:|---|
-| `navigation/voiceover` | **109** | 50 original navSounds/ScreenReaderSounds assignments + 59 missing genuine role/state/special cues from effects.zip; SRS samples never overwritten |
+| `navigation/voiceover` | **110** | ScreenReaderSounds prioritized, including new supplied VoiceOver cues; genuine older additional navSounds events remain available |
+| `navigation/talkback` | **39** | Original TalkBack event WAVs from ScreenReaderSounds(1).zip |
 | `navigation/default` | **85** | 86 supplied navSounds/default WAVs, normalized to distinct canonical NVDA events; one duplicate editable-text alias collapsed |
 | `typing/classic-typewriter` | **7** | Six official original navSounds character variants plus the user's real Classic Typewriter carriage bell |
 | `typing/voiceover` | **4** | Original ScreenReaderSounds typing WAVs |
+| `typing/talkback` | **3** | Original TalkBack typing WAVs from ScreenReaderSounds(1).zip |
 | `typing/blue-switch` | **3** | Original effects.zip blue switch samples |
 | `typing/red-switch` | **3** | Original effects.zip red switch samples |
 | `typing/brown-switch` | **7** | Original effects.zip brown switch samples |
@@ -22,14 +30,23 @@ All **706 original WAV assets** now reside in the single packaged directory `glo
 | `typing/samsung-1` | **3** | Original effects.zip Samsung typing samples |
 | `typing/samsung-2` | **3** | Original effects.zip Samsung typing samples |
 | `keyboard/voiceover` | **3** | Original ScreenReaderSounds Backspace, End and Shift+Tab WAVs |
-| `keyboard/cherry` | **65** | Kliq genuine key-down WAVs, one genuine in-pack fallback |
-| `keyboard/dsa` | **65** | Kliq genuine key-down WAVs, one genuine in-pack fallback |
-| `keyboard/kat` | **65** | Kliq genuine key-down WAVs, one genuine in-pack fallback |
-| `keyboard/mt3` | **58** | Kliq genuine key-down WAVs, one genuine in-pack fallback |
-| `keyboard/oem` | **65** | Kliq genuine key-down WAVs, one genuine in-pack fallback |
-| `keyboard/sa` | **64** | Kliq genuine key-down WAVs, one genuine in-pack fallback |
-| `keyboard/xda` | **65** | Kliq genuine key-down WAVs, one genuine in-pack fallback |
-| **Total** | **706** | **Real audio only; 23 built-in packs including 7 Kliq keyboards** |
+| `keyboard/cherry` | **130** | Kliq keydown+keyup originals and two genuine same-pack fallbacks |
+| `keyboard/dsa` | **130** | Kliq keydown+keyup originals and two genuine same-pack fallbacks |
+| `keyboard/kat` | **130** | Kliq keydown+keyup originals and two genuine same-pack fallbacks |
+| `keyboard/mt3` | **111** | Kliq originals; five source keyup samples unavailable in this set |
+| `keyboard/oem` | **130** | Kliq keydown+keyup originals and two genuine same-pack fallbacks |
+| `keyboard/sa` | **126** | Kliq originals; two source keyup samples unavailable in this set |
+| `keyboard/xda` | **130** | Kliq keydown+keyup originals and two genuine same-pack fallbacks |
+| `keyboard/bucklespring` | **209** | All source Bucklespring recordings (GPL v2) |
+| **Total** | **1,398** | **Real audio only; 26 fully editable packs including 8 switch-keyboard themes** |
+
+Reimport the new complete ScreenReaderSounds split archive:
+
+```bash
+python soundThemes/scripts/import_screenreader_multitheme.py 'upload/ScreenReaderSounds(1).zip'
+```
+
+The importer detects VoiceOver and TalkBack separately, resolves canonical event aliases, prefers `voiceover/objdata.zip` on duplicate event names and retains original audio byte content when already in WAV format. Non-PCM audio is converted **offline**, never synthesized. It updates the navigation and typing folders; keyboard pack keydown/keyup recordings are unchanged.
 
 For deterministic re-import when `effects.zip` is supplied next to the project:
 
@@ -52,12 +69,13 @@ Reimport actual original audio:
 python soundThemes/scripts/import_original_audio.py --screenreader-addon upload/ScreenReaderSounds.zip
 ```
 
-The same importer also recognizes audio-bearing ScreenReaderSounds installers with separate VoiceOver, TalkBack 5, or TalkBack 6 audio trees, if they are supplied later. Such complete TalkBack packs are **not yet included**. The Mechvibes long-OGG format is also **not included**.
+The earlier importer also recognizes audio-bearing ScreenReaderSounds installers with VoiceOver or TalkBack trees. The new multi-theme importer above includes a TalkBack pack. The Mechvibes long-OGG format is **not included**.
 
-The user supplied `upload/Sounds.zip` containing the Kliq per-key audio. Official project: https://github.com/crafter-station/kliq (MIT, Copyright 2026 Crafter Station; audio design by Cris). The source copyright and full license are included in `doc/KLIQ_LICENSE.txt`. Importer `scripts/import_kliq_audio.py` maps IBM PC set-1 codes to canonical keyboard events and copies **only key-down WAVs**, omitting every unused `-up.wav`. Of the 7 packs, a few lack recordings for some keys, which is why each pack contains the **real space-bar recording** as `keyboard.default.wav` (never synthesized or random). A real original `click.wav` supplies optional `nav.mouse.wav`.
+The user supplied `upload/Sounds.zip` containing the Kliq per-key audio. Official project: https://github.com/crafter-station/kliq (MIT, Copyright 2026 Crafter Station; audio design by Cris). The source copyright and full license are included in `doc/KLIQ_LICENSE.txt`. Importer `scripts/import_kliq_audio.py` maps IBM PC set-1 codes to canonical keyboard events and copies **both original `-down.wav` and `-up.wav`** when present. The 7 packs may lack recordings for some keys; each contains a fixed **real same-pack fallback** for press and, when available, release. Nothing is synthesized or randomly selected. A real `click.wav` supplies optional `nav.mouse.wav`.
 
 ```bash
 python soundThemes/scripts/import_kliq_audio.py upload/Sounds.zip
+python soundThemes/scripts/import_bucklespring_audio.py upload/bucklespring-master.zip
 ```
 
 Audio responsiveness also depends on the callback path: v0.6 corrected Explorer list-item sound mapping and noisy event callbacks; v0.7 replaces the former single interrupting stream with bounded concurrent playback. **These changes still require NVDA 2026 on Windows for real playback validation.**

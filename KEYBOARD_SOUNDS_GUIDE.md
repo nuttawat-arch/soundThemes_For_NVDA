@@ -1,8 +1,17 @@
-# Sound Themes for NVDA — Keyboard Sounds (v0.12.0)
+# Sound Themes for NVDA — Keyboard Sounds (v0.15.0)
+
+Open the Sound Themes settings directly from **NVDA menu → Tools → Sound Themes settings...**; it no longer appears as a page inside NVDA's global Settings dialog. Under that standalone window, **Check for updates now** uses official GitHub Releases without needing to submit to the Add-on Store. The local developer-only `release.ps1` automates creating future tagged releases but is never included in the add-on or source ZIP.
+
+Version 0.14.0: NVDA's supported `inputCore.decide_handleRawKey` callback supplies physical **press and release** transitions (`pressed=True`/`False`). The add-on uses it without installing another global keyboard hook or intercepting Windows/NVDA shortcuts. Choose one of **two per-preset** Keyboard playback modes in Manage sound themes → Keyboard Sounds:
+
+1. **Two layers, separate press/release:** `keyboard.a.wav` when pressed and `keyboard.a__release.wav` when released. An auto-repeating held key does not retrigger either sample.
+2. **One layer, combined press+release:** one `keyboard.a.wav` plays only on the first keydown. Keyup is always silent; the release already in the same WAV is never duplicated. An old `press` mode is migrated here.
+
+Modes are stored independently for each keyboard preset in normal NVDA configuration. Keyboard ZIP export/import preserves them. All seven Kliq themes include their `*-up.wav` releases; Bucklespring provides 209 genuine samples (`NN-1.wav` = press, `NN-0.wav` = release). All packs are editable and removable. **Because WAVs now live inside the installed add-on rather than in a separate NVDA user-config sound folder, export any edited preset to ZIP before replacing/upgrading the add-on; an NVDA add-on update can replace its files.** The prior external sound folder is only read during one-time migration; it is not recreated. Navigation and Typing remain separate from these keyboard playback modes.
 
 Version 0.12.0: Navigation Sounds now follow web Browse Mode **virtual** cursor movements through links, buttons and headings rather than depending solely on Windows keyboard focus. In a browser, single-letter quick navigation (such as B/K/H) and arrow movement play the role-specific WAV in your chosen navigation pack when NVDA identifies that element. This is independent of physical Keyboard Sounds, which remains off by default. Normal keypress events and browser shortcuts are not intercepted.
 
-Version 0.11.0: **Typing Sounds** can now play Enter, Space and Backspace/Delete on a physical keydown in focused editable fields even when NVDA does not emit a typed-character notification. Matching later notifications are suppressed to avoid doubling. Dedicated samples such as `key.enter.wav` are preferred; otherwise the pack's genuine `key.character.wav` is used (no synthetic audio and no mixing themes). This is Typing Sounds behavior, not the physical **Keyboard Sounds** category, which has its own `keyboard.enter.wav` and similar key events. All categories allow removal of every listed preset; built-in removal is persistent and reversible using **Restore removed presets**. The obsolete **Import old sounds folder** button is gone; import theme ZIPs or edit WAV events directly.
+Version 0.11.0: **Typing Sounds** can play Enter, Space and Backspace/Delete on physical keydown in editable fields when NVDA omits the typed-character event; duplicate notifications are suppressed. A dedicated event recording is preferred to the pack's real `key.character.wav` fallback. This is distinct from the physical **Keyboard Sounds** category. All presets can be edited, renamed, and deleted directly. The obsolete **Import old sounds folder** button is gone; import theme ZIPs or edit events directly.
 
 Version 0.10.0 fixes a separate cause of the Shift double-sound: NVDA fires `post_speechPaused` when Shift pauses speech. Previous builds played `system.paused_feedback` in addition to the keyboard key sound, even with Navigation disabled. That speech cue is now off by default and always suppressed around a physical Shift press. It can be enabled for other speech-pause events using the independent **Play speech-pause feedback** checkbox. In the editor, each sound event has a screen-reader-readable explanation of its NVDA trigger and typical app context. Its short item label (for example `C`, `Shift`, `LISTITEM`) stays searchable with first-letter navigation.
 
@@ -16,48 +25,45 @@ New in 0.8.0: arrow through a keyboard theme (for example Cherry or KAT) in the 
 |---|---|---|---|
 | Navigation Sounds | On | Actual NVDA focus, role, state, browse/caret/selection and navigation activity | `effects/navigation/<pack>` |
 | Typing Sounds | On | Characters typed in NVDA; random sounds only from the *chosen typing pack* | `effects/typing/<pack>` |
-| Keyboard Sounds | Off | Each physical key **down** delivered by NVDA's raw-key hook | `effects/keyboard/<pack>` |
+| Keyboard Sounds | Off | First physical key down and optionally the matching keyup via NVDA's raw-key hook | `effects/keyboard/<pack>` |
 
 Enabling **Keyboard Sounds** disables **both** Navigation Sounds and Typing Sounds. Enabling either Navigation or Typing disables Keyboard Sounds. System lock/unlock sounds remain under the independent **System** option.
 
 When Keyboard Sounds is **off**, merely pressing Tab, Shift+Tab, arrows, Home, End or Page Up/Down never triggers a keyboard-key sample. Navigation may still play role/focus/browse/scroll sounds **if NVDA reports actual movement**. Pressing such a key without a resulting movement is silent.
 
-## Keyboard sound packs: one file per key
+## Keyboard sound packs: press and optional release per key
 
-Every pack is a directory of real, uncompressed PCM `.wav` recordings. **No `theme.json`** and no timed `sound.ogg` sprite are needed. A keyboard event plays **exactly one assigned file**; no random choice. A missing event is silent unless that pack contains the genuine `keyboard.default.wav` fallback. The fallback is always from the same pack, never an artificial effect or a sample from another pack.
+Every pack contains real uncompressed PCM `.wav` recordings. **No `theme.json`** or timed `sound.ogg` sprites are needed. Each press/release phase plays **at most one** file, with no randomness. `keyboard.default.wav` can cover an unrecorded press, while `keyboard.default__release.wav` can cover an unrecorded release. A release never borrows a press WAV; fallbacks are always from the same pack.
 
 Examples:
 
 ```text
 globalPlugins/soundThemes/effects/
     navigation/voiceover/role.button.wav
+    navigation/talkback/role.button.wav
     typing/classic-typewriter/key.character__original.wav
+    typing/talkback/key.character.wav
     keyboard/voiceover/keyboard.shift_tab.wav
-
-NVDA user config/soundThemes/effects/
-    navigation/My-Navigation/role.button.wav
-    typing/My-Typing/key.character.wav
     keyboard/My-Keyboard/keyboard.a.wav
+    keyboard/My-Keyboard/keyboard.a__release.wav
     keyboard/My-Keyboard/keyboard.left_ctrl.wav
     keyboard/My-Keyboard/keyboard.f12.wav
-    keyboard/My-Keyboard/keyboard.pageup.wav
-    keyboard/My-Keyboard/keyboard.brightness_down.wav
     keyboard/kat/keyboard.default.wav
 ```
 
-The built-in `keyboard/voiceover` pack still contains **three real ScreenReaderSounds files** (Backspace, End, Shift+Tab). Seven additional keyboard themes contain genuine Kliq audio supplied by the user: Cherry, DSA, KAT, MT3, OEM, SA and XDA. KAT is the default for new installations. The original Kliq key-down scan codes are renamed to `keyboard.<key>.wav` without changing the recorded audio. The included seven packs each have a fixed real space-bar WAV as `keyboard.default.wav` for buttons not separately recorded (e.g. some function/media keys). There is no generated placeholder audio. For a custom pack, remove/replace `keyboard.default.wav` if you want unmatched keys to be silent or use a different real recording.
+The built-in `keyboard/voiceover` pack retains **three real ScreenReaderSounds files** (Backspace, End, Shift+Tab). Seven Kliq switch themes are Cherry, DSA, KAT, MT3, OEM, SA and XDA (KAT remains the first-install default). Original Kliq down/up scan codes are mapped to distinct `keyboard.<key>.wav` and `keyboard.<key>__release.wav` files without altering the sound. The eighth switch theme, Bucklespring, includes its 209 real recordings. A theme can provide fixed, genuine press/release fallback recordings; missing keys without corresponding fallbacks remain silent.
 
 The Windows virtual-key catalog includes 1–255, A–Z, 0–9, punctuation, left/right modifiers, Caps Lock, Num Lock, Tab, Escape, Space, Enter, arrows, Home/End, Page Up/Down, F1–F24, numpad, browser/media/volume keys and unknown codes. The editor also offers extra keys such as Dim Screen/Brightness Up and Fn. **Hardware Fn or brightness buttons that do not emit Windows keyboard events cannot be detected by NVDA's raw-key extension; listing them as assignable does not guarantee they can trigger on every computer.**
 
 ## How to use the editor without a mouse
 
-1. Open NVDA → Preferences → Settings → Sound Themes.
+1. Open NVDA → Tools → Sound Themes settings...
 2. Choose **Manage sound themes** (only one main management button).
 3. Use the notebook tabs: **Navigation**, **Typing**, **Keyboard Sounds**. Select the keyboard tab.
-4. Choose **Create / copy selected**, name a new theme and select **Edit sounds**. Built-in themes are read-only; editing them first creates a personal copy.
-5. In the keyboard editor, select an event from its group/list; alternatively, Tab to **Capture and preview a physical key** and press the exact key to choose and hear its assigned WAV. Capture acts only while that field has focus; other controls keep ordinary keyboard navigation. `Esc` in capture is a key assignment, not dialog cancel.
-6. Choose **Replace WAV**, browse to *any* existing PCM WAV (its original filename can be anything) and open it. The editor stores it under the selected event ID, e.g. selecting F7 turns `my_click_23.wav` into `keyboard.f7.wav`. **No random variations are allowed in keyboard themes.** Use **Preview** to listen. Repeat for other keys.
-7. **Use this theme**, close the manager, choose it in **Keyboard sound theme** and tick **Keyboard Sounds**. Navigation and Typing are switched off; save the page. The single **Open sound folders** button opens the parent containing all three user categories.
+4. Select any theme and choose **Edit sounds**, **Rename**, or **Delete** directly. There are no protected built-in themes. Create or copy a pack only if you want another one.
+5. The editor shows **one alphabetical event list**, without category/group dropdowns. Its items have familiar short names such as `checkbox`, `text`, `A`, and `Shift`. Alternatively, Tab to **Capture and preview a physical key** and press the exact key. Capture operates only while its field has focus; `Esc` inside capture is a key assignment.
+6. Choose **Replace WAV** for a press/combined sample, or **Replace key release WAV** for a separate release click. The editor saves them as `keyboard.f7.wav` and `keyboard.f7__release.wav`, regardless of source filename. Separate Preview and Remove controls are provided for the release. **No random variations** are allowed in keyboard themes.
+7. Choose **Done** to save edits or **Cancel** to revert edits made in that editor session, including WAV removal/replacement. **Use this theme**, close the manager, choose it in **Keyboard sound theme** and tick **Keyboard Sounds**. The **Open sound folders** button opens the add-on's embedded `effects` directory, containing all three sound categories.
 
 Source pack import also recognizes canonical `keyboard.a.wav`, `a.wav`, `KeyA.wav`, `Digit1.wav`, `ShiftLeft.wav`, `ArrowUp.wav` and similar unambiguous filenames. Ambiguous filenames are **not randomly assigned**: choose their intended key in the editor instead.
 
@@ -67,8 +73,8 @@ Source pack import also recognizes canonical `keyboard.a.wav`, `a.wav`, `KeyA.wa
 - MechvibesDX official format document: https://github.com/hainguyents13/mechvibes-dx/blob/main/docs/soundpack-config-v2.md — the `multi` definition method permits one independent sound file per key; the usual `single` method uses time-sliced audio.
 - **Kliq keyboard sound library (GitHub):** https://github.com/crafter-station/kliq . Its source contains seven sets of real per-key `-down.wav` / `-up.wav` recordings. The supplied archive has fewer recorded F-key samples than the format supports; a fixed in-pack fallback plays those keys. The included importer maps scan codes to names automatically. Kliq is MIT licensed; the complete copyright/license notice accompanies the add-on.
 
-Important: The user-supplied `Sounds.zip` from Kliq **is now included in the release as seven key-down-only themes**. The `-up.wav` files and standalone samples unused by the active playback mode are not packaged. A full automatic importer for long, timed OGG Mechvibes packs is deliberately not part of the NVDA runtime.
+Important: The user-supplied `Sounds.zip` from Kliq is included as **seven keydown+keyup themes**. The supplied `bucklespring-master.zip` has its own distinct preset; its author distributes it under GNU GPL v2 (license included). A full automatic importer for long, timed OGG Mechvibes packs is deliberately not part of the NVDA runtime.
 
 ## Original ScreenReaderSounds files
 
-The user-provided `ScreenReaderSounds.zip` was read in v0.5.0: original WAVs at the archive root, distinct role sounds in nested `objdata.zip`, and three actual OGG recordings. It yielded **54 distinct mapped events, including three separate keyboard events**; original OGGs were decoded offline into PCM WAV (not fabricated). Duplicate roles prefer the inner `objdata` recording. Version 0.9.0 also imports the user's new `effects.zip` WAVs for missing navigation events and typing packs: **706 real WAVs total** in the add-on, including the seven genuine Kliq per-key switch sets. Some uncommon NVDA/hardware events still require Windows testing.
+The original `ScreenReaderSounds.zip` supplied **54 distinct mapped events**, including three physical keyboard events; three OGGs were decoded to PCM WAV. The newer `ScreenReaderSounds(1).zip` additionally supplies genuine VoiceOver and TalkBack packs. ScreenReaderSounds wins when its canonical event overlaps with NavigationSounds. Version 0.14 ships **1,398 genuine WAVs across 26 editable packs**, including TalkBack navigation and typing. Bare legacy sound names such as `checkbox.wav` and `editabletext.wav` are accepted, and the editor displays concise event labels without `System` prefixes. Some uncommon NVDA/hardware events still require live Windows testing.

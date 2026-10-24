@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from zipfile import BadZipFile
+from collections import Counter
 import os
 
 import wx
@@ -12,11 +13,12 @@ import languageHandler
 import ui
 from controlTypes import Role, State
 from gui import guiHelper
-from gui.settingsDialogs import SettingsPanel
 
 from .catalog import all_events, event_description
 from .keyboard_catalog import all_keyboard_events, event_for_virtual_key, name_for_event
+from .keyboard_playback import KEYBOARD_PLAYBACK_MODES
 from .modes import resolve_modes
+from .theme_edit_session import ThemeEditSession
 
 addonHandler.initTranslation()
 
@@ -50,9 +52,23 @@ def preview_selected_theme(plugin, store, identifier):
         pass
 
 
-class SoundSettingsPanel(SettingsPanel):
-    plugin = None
-    title = _("Sound Themes")
+def short_event_label(key: str) -> str:
+    """Use familiar original WAV names, not categories or technical prefixes."""
+    aliases = {"key.character": "typekey", "key.space": "typekeyspace",
+               "key.backspace": "typekeyremove", "key.protected": "typekeypr"}
+    return aliases.get(key, key.split(".", 1)[-1])
+
+
+class SoundSettingsPanel(wx.ScrolledWindow):
+    """Settings shared by our own Tools dialog, not NVDA's Settings dialog."""
+
+    def __init__(self, parent, plugin):
+        super().__init__(parent, style=wx.TAB_TRAVERSAL | wx.VSCROLL)
+        self.plugin = plugin
+        self.SetScrollRate(10, 10)
+        main = wx.BoxSizer(wx.VERTICAL)
+        self.SetSizer(main)
+        self.makeSettings(main)
 
     def makeSettings(self, sizer):
         self.helper = guiHelper.BoxSizerHelper(self, sizer=sizer)
@@ -121,6 +137,10 @@ class SoundSettingsPanel(SettingsPanel):
         manager.Bind(wx.EVT_BUTTON, self.manage)
         open_folders = self.helper.addItem(wx.Button(self, label=_("&Open sound folders")))
         open_folders.Bind(wx.EVT_BUTTON, self.on_open_folder)
+        self.checkForUpdates = self._check(
+            _("Check for Sound Themes &updates when NVDA starts"), "checkForUpdates")
+        check_now = self.helper.addItem(wx.Button(self, label=_("Check for &updates now")))
+        check_now.Bind(wx.EVT_BUTTON, lambda evt: plugin._updater.check(manual=True))
 
     def _check(self, label, key):
         cb = self.helper.addItem(wx.CheckBox(self, label=label))
@@ -190,11 +210,35 @@ class SoundSettingsPanel(SettingsPanel):
             config.conf[SECTION]["keyboardTheme"] = self.keyboard_ids[keyboard_selected]
         self.on_mode_change("keyboard" if self.keyboard.GetValue() else "")
         for key in ("enabled", "navigation", "typing", "system", "pauseFeedback", "mouse", "onlyEditable",
-                    "arrowNavSounds", "sayRoles", "sayStates", "keyboard"):
+                    "arrowNavSounds", "sayRoles", "sayStates", "keyboard", "checkForUpdates"):
             config.conf[SECTION][key] = getattr(self, key).GetValue()
         config.conf[SECTION]["hoverDelay"] = self.delay.GetValue()
         config.conf[SECTION]["volume"] = self.volume.GetValue()
         self.plugin.reload_sounds()
+
+
+class SoundSettingsDialog(wx.Dialog):
+    """Accessible, standalone Settings window opened from NVDA's Tools menu."""
+
+    def __init__(self, parent, plugin):
+        super().__init__(parent, title=_("Sound Themes settings"), size=(700, 730),
+                         style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+        main = wx.BoxSizer(wx.VERTICAL)
+        self.panel = SoundSettingsPanel(self, plugin)
+        main.Add(self.panel, 1, wx.ALL | wx.EXPAND, 8)
+        actions = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
+        if actions is not None:
+            main.Add(actions, 0, wx.ALL | wx.EXPAND, 8)
+        self.SetSizer(main)
+        self.Bind(wx.EVT_BUTTON, self.on_save, id=wx.ID_OK)
+
+    def on_save(self, evt):
+        try:
+            self.panel.onSave()
+        except (OSError, ValueError, KeyError) as error:
+            explain_error(self, error)
+            return
+        self.EndModal(wx.ID_OK)
 
 
 class ThemeManager(wx.Dialog):
@@ -227,23 +271,34 @@ class ThemeManagerPage(wx.Panel):
                             "keyboard": "keyboardTheme"}[kind]
         main = wx.BoxSizer(wx.VERTICAL)
         main.Add(wx.StaticText(self, label=_(
-            "Sound themes (all presets can be removed; copy built-in themes to edit):")),
+            "Sound themes (all presets can be edited, renamed, and deleted):")),
                  0, wx.ALL, 8)
         self.theme_list = wx.ListBox(self, style=wx.LB_SINGLE)
         self.theme_list.SetName(_("Available sound themes"))
         self.theme_list.Bind(wx.EVT_LISTBOX, self.on_theme_selection)
         main.Add(self.theme_list, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
+        if kind == "keyboard":
+            main.Add(wx.StaticText(self, label=_("&Keyboard playback mode for this preset:")),
+                     0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
+            self.playback_mode = wx.Choice(self, choices=[
+                _("Two layers: separate press and release WAVs"),
+                _("One layer: one WAV already contains press and release"),
+            ])
+            self.playback_mode.SetName(_("Playback mode for selected keyboard preset"))
+            self.playback_mode.Bind(wx.EVT_CHOICE, self.on_playback_mode)
+            main.Add(self.playback_mode, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
         buttons = wx.FlexGridSizer(cols=2, hgap=5, vgap=5)
-        actions = (
+        actions = [
             (_("&Create / copy selected..."), self.create),
             (_("&Edit sounds..."), self.edit),
             (_("Re&name..."), self.rename),
             (_("&Delete..."), self.delete),
             (_("Import theme &ZIP..."), self.import_zip),
-            (_("&Restore removed presets..."), self.restore_builtin),
             (_("E&xport theme ZIP..."), self.export),
             (_("&Use this theme"), self.activate),
-        )
+        ]
+        if not getattr(self.store, "embedded", False):
+            actions.insert(5, (_("&Restore removed presets..."), self.restore_builtin))
         for title, handler in actions:
             button = wx.Button(self, label=title)
             button.Bind(wx.EVT_BUTTON, handler)
@@ -264,8 +319,32 @@ class ThemeManagerPage(wx.Panel):
             self.theme_list.SetSelection(ids.index(select_id))
         elif ids:
             self.theme_list.SetSelection(0)
+        self._show_playback_mode()
+
+    def _show_playback_mode(self):
+        if self.kind != "keyboard":
+            return
+        index = self.theme_list.GetSelection()
+        if 0 <= index < len(self.choices):
+            mode = self.store.playback_mode(self.choices[index][0])
+            self.playback_mode.SetSelection(KEYBOARD_PLAYBACK_MODES.index(mode))
+            self.playback_mode.Enable(True)
+        else:
+            self.playback_mode.SetSelection(wx.NOT_FOUND)
+            self.playback_mode.Enable(False)
+
+    def on_playback_mode(self, evt):
+        identifier = self._act(self.selected)
+        index = self.playback_mode.GetSelection()
+        if identifier is None or not 0 <= index < len(KEYBOARD_PLAYBACK_MODES):
+            return
+        done = self._act(lambda: (self.store.set_playback_mode(
+            identifier, KEYBOARD_PLAYBACK_MODES[index]), True)[1])
+        if done:
+            self.plugin.reload_sounds()
 
     def on_theme_selection(self, evt):
+        self._show_playback_mode()
         index = self.theme_list.GetSelection()
         if 0 <= index < len(self.choices):
             preview_selected_theme(self.plugin, self.store, self.choices[index][0])
@@ -295,7 +374,7 @@ class ThemeManagerPage(wx.Panel):
         identifier = self._act(self.selected)
         if not identifier:
             return
-        if identifier.startswith("builtin:"):
+        if identifier.startswith("builtin:") and not getattr(self.store, "embedded", False):
             name = ask_name(self, _("Copy built-in theme to edit"))
             if not name:
                 return
@@ -314,7 +393,7 @@ class ThemeManagerPage(wx.Panel):
         identifier = self._act(self.selected)
         if not identifier:
             return
-        if identifier.startswith("builtin:"):
+        if identifier.startswith("builtin:") and not getattr(self.store, "embedded", False):
             explain_error(self, _("Built-in sound packs cannot be renamed"))
             return
         name = ask_name(self, _("Rename sound theme"), self.store.load(identifier)["name"])
@@ -407,18 +486,23 @@ class ThemeEditor(wx.Dialog):
         self.store = store
         self.identifier = identifier
         self._description_timer = None
+        self.session = ThemeEditSession(store, identifier)
         catalog = all_keyboard_events() if store.kind == "keyboard" else all_events(Role, State)
         self.entries = [(group, key, label) for group, key, label in catalog
                         if store.accepts(key)]
-        self.groups = sorted({group for group, _, _ in self.entries})
+        self._editor_map = store.load(identifier)["sounds"]
+        chosen = [(key, short_event_label(key)) for _, key, _ in self.entries]
+        occurrences = Counter(label for _, label in chosen)
+        self.visible = sorted(
+            [(key, label if occurrences[label] == 1
+              else _("%s (%s)") % (label, key.partition(".")[0])) for key, label in chosen],
+            key=lambda pair: (pair[1].casefold(), pair[0]),
+        )
         main = wx.BoxSizer(wx.VERTICAL)
-        main.Add(wx.StaticText(self, label=_("&Event category:")), 0, wx.ALL, 8)
-        self.group = wx.Choice(self, choices=self.groups)
-        self.group.SetName(_("Event category"))
-        main.Add(self.group, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
         main.Add(wx.StaticText(self, label=_("Choose an &event to assign a WAV file:")), 0, wx.ALL, 8)
         self.events = wx.ListBox(self)
         self.events.SetName(_("Sound events"))
+        self.events.Set([label for _, label in self.visible])
         main.Add(self.events, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
         main.Add(wx.StaticText(self, label=_("Where and when this sound is used:")),
                  0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
@@ -433,6 +517,8 @@ class ThemeEditor(wx.Dialog):
         self.path_label = wx.StaticText(self, label=_("Sound file: none"))
         main.Add(self.path_label, 0, wx.ALL, 8)
         if store.kind == "keyboard":
+            self.release_label = wx.StaticText(self, label=_("Release WAV: none"))
+            main.Add(self.release_label, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
             main.Add(wx.StaticText(self, label=_("Press a key in the field below to select and preview its sound:")),
                      0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
             self.capture = wx.TextCtrl(self, style=wx.TE_READONLY)
@@ -440,36 +526,38 @@ class ThemeEditor(wx.Dialog):
             self.capture.SetValue(_("Focus here and press a key, including Tab or F1–F12"))
             main.Add(self.capture, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
             self.capture.Bind(wx.EVT_CHAR_HOOK, self.on_key_capture)
-        buttons = wx.BoxSizer(wx.HORIZONTAL)
+        buttons = wx.FlexGridSizer(cols=2, hgap=5, vgap=5)
         actions = [(_("&Replace WAV..."), self.assign)]
-        if store.kind != "keyboard":
+        if store.kind == "keyboard":
+            actions.extend([
+                (_("Replace key &release WAV..."), self.assign_release),
+                (_("Preview release WAV"), self.preview_release),
+                (_("Remove release WAV"), self.remove_release),
+            ])
+        else:
             actions.append((_("Add WAV &variation..."), self.append))
         actions.extend([(_("&Preview"), self.preview), (_("&Remove assignment"), self.remove)])
         for title, callback in actions:
             button = wx.Button(self, label=title)
             button.Bind(wx.EVT_BUTTON, callback)
-            buttons.Add(button, 0, wx.RIGHT, 6)
+            buttons.Add(button, 0, wx.EXPAND)
+        buttons.AddGrowableCol(0, 1)
+        buttons.AddGrowableCol(1, 1)
         main.Add(buttons, 0, wx.ALL, 8)
-        close = wx.Button(self, wx.ID_CLOSE, _("&Done"))
-        close.Bind(wx.EVT_BUTTON, self.on_done)
-        main.Add(close, 0, wx.ALL | wx.ALIGN_RIGHT, 8)
+        finish = wx.BoxSizer(wx.HORIZONTAL)
+        done = wx.Button(self, wx.ID_OK, _("&Done"))
+        done.Bind(wx.EVT_BUTTON, self.on_done)
+        finish.Add(done, 0, wx.RIGHT, 8)
+        cancel = wx.Button(self, wx.ID_CANCEL, _("&Cancel"))
+        cancel.Bind(wx.EVT_BUTTON, self.on_cancel)
+        finish.Add(cancel, 0)
+        main.Add(finish, 0, wx.ALL | wx.ALIGN_RIGHT, 8)
         self.SetSizer(main)
-        self.group.Bind(wx.EVT_CHOICE, self.on_group)
         self.events.Bind(wx.EVT_LISTBOX, self.on_select)
-        self.group.SetSelection(0)
-        self.on_group(None)
-
-    def on_group(self, evt):
-        if not self.groups:
-            return
-        label = self.groups[self.group.GetSelection()]
-        self.visible = [(key, name) for group, key, name in self.entries if group == label]
-        # Keep the names unprefixed for first-letter keyboard navigation.
-        # Assignment details are in the separate Sound file label below.
-        self.events.Set([name for key, name in self.visible])
         if self.visible:
             self.events.SetSelection(0)
-        self.on_select(evt)
+        self.on_select(None)
+        self.Bind(wx.EVT_CLOSE, self.on_cancel)
 
     def selected_key(self):
         index = self.events.GetSelection()
@@ -487,11 +575,14 @@ class ThemeEditor(wx.Dialog):
             # Let NVDA announce the bare list item first; a quick series of
             # arrow presses must never queue stale, wordy descriptions.
             self._description_timer = wx.CallLater(170, self._announce_event, key, explanation)
-        mapping = self.store.load(self.identifier)["sounds"]
+        mapping = self._editor_map
         value = mapping.get(key)
         description = (_("%d sound variations") % len(value) if isinstance(value, list)
                        else value or _("none (fallback may apply)"))
         self.path_label.SetLabel(_("Sound file: %s") % description)
+        if self.store.kind == "keyboard":
+            released = mapping.get(key + ".release") if key else None
+            self.release_label.SetLabel(_("Release WAV: %s") % (released or _("none")))
         if evt is not None and key:
             path = self.store.sound_for(self.identifier, key)
             if path is not None:
@@ -509,7 +600,21 @@ class ThemeEditor(wx.Dialog):
         if self._description_timer is not None:
             self._description_timer.Stop()
             self._description_timer = None
-        self.EndModal(wx.ID_CLOSE)
+        self.session.commit()
+        self.EndModal(wx.ID_OK)
+
+    def on_cancel(self, evt):
+        if self._description_timer is not None:
+            self._description_timer.Stop()
+            self._description_timer = None
+        try:
+            changed = self.session.rollback()
+            if changed:
+                self.plugin.reload_sounds()
+        except OSError as error:
+            explain_error(self, error)
+            return
+        self.EndModal(wx.ID_CANCEL)
 
     def on_key_capture(self, event):
         """Consume keystrokes only in this field; keep Tab accessible elsewhere."""
@@ -520,17 +625,11 @@ class ThemeEditor(wx.Dialog):
             return
         flags = event.GetRawKeyFlags()
         selected = event_for_virtual_key(code, (flags >> 16) & 0xFF, bool(flags & 0x0100))
-        for group, key, _ in self.entries:
-            if key != selected:
-                continue
-            self.group.SetSelection(self.groups.index(group))
-            self.on_group(None)
-            for row, (candidate, _) in enumerate(self.visible):
-                if candidate == key:
-                    self.events.SetSelection(row)
-                    self.on_select(None)
-                    break
-            break
+        for row, (key, _) in enumerate(self.visible):
+            if key == selected:
+                self.events.SetSelection(row)
+                self.on_select(None)
+                break
         self.capture.SetValue(_("Key: %s") % name_for_event(selected))
         path = self.store.sound_for(self.identifier, selected)
         if path is not None:
@@ -541,20 +640,20 @@ class ThemeEditor(wx.Dialog):
 
     def _act(self, callback):
         try:
+            self.session.prepare_edit()
             callback()
             self.plugin.reload_sounds()
-            index = self.events.GetSelection()
-            self.on_group(None)
-            if index >= 0:
-                self.events.SetSelection(index)
-                self.on_select(None)
+            self._editor_map = self.store.load(self.identifier)["sounds"]
+            self.on_select(None)
         except (ValueError, OSError, KeyError, PermissionError) as error:
             explain_error(self, error)
 
-    def _pick_wav(self, append: bool):
+    def _pick_wav(self, append: bool, release: bool = False):
         key = self.selected_key()
         if not key:
             return
+        if release:
+            key += ".release"
         with wx.FileDialog(self, _("Choose uncompressed WAV"),
                            wildcard="WAV files (*.wav)|*.wav", style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as dialog:
             if dialog.ShowModal() != wx.ID_OK:
@@ -565,6 +664,9 @@ class ThemeEditor(wx.Dialog):
     def assign(self, evt):
         self._pick_wav(False)
 
+    def assign_release(self, evt):
+        self._pick_wav(False, release=True)
+
     def append(self, evt):
         self._pick_wav(True)
 
@@ -573,10 +675,20 @@ class ThemeEditor(wx.Dialog):
         if key:
             self._act(lambda: self.store.assign(self.identifier, key, None))
 
-    def preview(self, evt):
+    def remove_release(self, evt):
+        key = self.selected_key()
+        if key:
+            self._act(lambda: self.store.assign(self.identifier, key + ".release", None))
+
+    def preview_release(self, evt):
+        self._preview_phase("release")
+
+    def _preview_phase(self, phase="press"):
         key = self.selected_key()
         if not key:
             return
+        if phase == "release":
+            key += ".release"
         path = self.store.sound_for(self.identifier, key)
         if path is None:
             wx.MessageBox(_("No sound is assigned to this event"), _("Preview"), parent=self)
@@ -585,3 +697,6 @@ class ThemeEditor(wx.Dialog):
             self.plugin.audio.preview_file(path, self.plugin.setting("volume"))
         except (ValueError, OSError) as error:
             explain_error(self, error)
+
+    def preview(self, evt):
+        self._preview_phase("press")

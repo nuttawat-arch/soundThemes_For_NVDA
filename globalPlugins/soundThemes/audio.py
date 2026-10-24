@@ -286,11 +286,19 @@ class AudioEngine:
                     pending = self._queue.get(timeout=0.05)
                 except queue.Empty:
                     continue
+            # Device resolution can traverse NVDA configuration/profile state.
+            # One queued sound needs one lookup, not a repeated lookup for
+            # each occupied playback voice on a busy system.
+            try:
+                device = self._output_device()
+            except Exception as error:
+                self._log.warning("Sound Themes: output device lookup failed: %s", error)
+                pending = None
+                continue
             for voice in self._voices:
                 if self._closed.is_set():
                     break
                 try:
-                    device = self._output_device()
                     if voice.offer(pending, device):
                         pending = None
                         break

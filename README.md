@@ -1,4 +1,61 @@
-# Sound Themes for NVDA 0.12.0
+# Sound Themes for NVDA 0.15.0
+
+**New in 0.15.0:** Open the complete Sound Themes settings window directly
+from **NVDA menu → Tools → Sound Themes settings...**. It is no longer buried
+under NVDA Preferences → Settings. The standalone, keyboard-accessible dialog
+has **OK** and **Cancel** buttons and retains all three pack managers, event
+editor, volume and enable switches. Configuration values remain in NVDA's
+normal configuration to preserve existing choices; only the **location of the
+user interface** has changed.
+
+GitHub Releases provide **optional update notifications without the NVDA Add-on
+Store**. Automatic checks are enabled initially, begin 15 seconds after NVDA
+starts, and perform HTTP/network and file I/O in a background thread. In Tools
+→ Sound Themes settings, choose **Check for updates now** or uncheck **Check for
+updates when NVDA starts**. An available update offers **Update now**, **Later**,
+or **Skip this version**. The installer still asks for user confirmation and
+NVDA restart. Only a stable release containing the correctly named add-on
+from `nuttawat-arch/soundThemes_For_NVDA` is accepted. When GitHub provides an
+SHA-256 digest, it is checked before installation. Installing an updated add-on
+can replace custom WAVs inside it; **export edited presets as ZIPs first**.
+
+The private developer script **`release.ps1`** runs tests, updates the version,
+builds/validates both archives, commits and pushes `main` plus its `vX.Y.Z`
+tag. GitHub Actions then builds and publishes a Release automatically. The
+script is deliberately **excluded from Git and from both distributable ZIPs**;
+keep your own local copy at the repository root. It does not submit anything
+to the NVDA Add-on Store. The iPhone Keyboard and VoiceOver typing presets
+have also been compared: despite similar audible character, their source WAVs
+and decoded waveforms are different, so neither has been deleted.
+
+**New in 0.14.0:** All sound presets are editable directly within the add-on's
+`globalPlugins/soundThemes/effects/` directory: rename, replace WAVs or delete
+any of them without copying a "built-in" preset. The add-on no longer creates
+the separate `NVDA user-config/soundThemes/effects/` sound folder. Existing
+user-config packs from 0.13 are **copied once** into the embedded effects folder
+on the first upgraded launch, with collisions given a `-personal` suffix. Old
+files are intentionally left untouched for safety. Small playback preferences
+and removal decisions live in NVDA's existing settings, not another WAV folder.
+**Important:** reinstalling/updating any NVDA add-on can replace its installed
+files, including edited WAVs. **Export personalized packs to ZIP before every
+add-on update**; this is the necessary trade-off when storing writable sounds
+inside the installed add-on instead of NVDA's persistent user configuration.
+
+Keyboard Sounds has **two** per-preset methods: "Two layers" plays dedicated
+press and release files; "One layer" plays the combined file only on keydown.
+The former third "press-only" choice is migrated to "One layer" without losing
+the selected preset. Key audio has no unnecessary fixed 18 ms throttle, and
+when Navigation is disabled expensive web Browse Mode caret snapshots are
+skipped entirely. Output-device resolution is done once per queued sound.
+
+The sound editor now has a single alphabetically ordered list (no category
+chooser), familiar names such as `checkbox`, `editabletext`, `typekey`, and
+`typekeyremove`, plus **Done** and **Cancel**. Cancel restores every WAV change
+made during that edit session. Legacy plain WAV filenames are accepted; when
+`checkbox.wav` and `role.checkbox.wav` coexist, the plain original is used
+instead of randomly alternating. The new user-supplied ScreenReaderSounds ZIP
+added TalkBack and updated VoiceOver navigation/typing recordings. Original
+ScreenReaderSounds takes win on canonical event conflicts over navSounds.
 
 Maintainer: **Nuttawat Seecham** — nutblind2545t@gmail.com  
 Source and homepage: https://github.com/nuttawat-arch/soundThemes_For_NVDA
@@ -11,7 +68,7 @@ One accessible NVDA add-on combining **navSounds** and **ScreenReaderSounds** be
 |---|---|---|
 | Navigation | **On** | Plays real NVDA role/focus/state/browse/caret/selection/scroll events, not raw key presses |
 | Typing | **On** | Plays typed characters and typing-specific events; random samples stay inside the active typing pack |
-| Keyboard Sounds | **Off** | Plays exactly one assigned WAV for each distinct physical-key down; never random |
+| Keyboard Sounds | **Off** | Plays per-key down/up cues according to each preset's playback mode; never random |
 
 Enabling **Keyboard Sounds** automatically disables **both** Navigation and Typing. Re-enabling either Navigation or Typing disables Keyboard Sounds. System sounds (including lock/unlock) use a separate switch.
 
@@ -19,11 +76,15 @@ When Keyboard Sounds is off, simply pressing Tab, arrows, Home/End or Page Up/Do
 
 ## Accessible management
 
+**New in 0.13, simplified in 0.14: physical keydown/keyup sounds.** In Manage sound themes → Keyboard Sounds, each editable preset has one of **two** playback modes: **Two layers** (a different press and release WAV), or **One layer** (a combined press-and-release WAV played only once on keydown). `keyboard.a.wav` is the keydown file; `keyboard.a__release.wav` is the optional keyup file. An old 0.13 "Press only" selection is recognized as **One layer**. The keyboard editor has Replace/Preview/Remove **release WAV** controls. The NVDA raw-key listener suppresses held-key auto-repeat and generic/left/right modifier duplicate reports, differentiates numpad Enter and nonextended numpad navigation keys, never intercepts Windows/NVDA shortcuts and no longer delays genuine rapid key presses with an arbitrary 18 ms minimum gap. Mode preferences live in native NVDA settings; keyboard ZIP exports/imports preserve them.
+
+All seven Kliq switch presets now include their original `*-up.wav` samples in addition to the key-down files already present. The new **Bucklespring** preset uses actual IBM Model M recordings: its upstream `NN-1.wav` means key **down** and `NN-0.wav` means key **up**. Bundled keyboard presets containing release recordings default to separate playback unless a saved mode override exists; older custom press-only presets keep their current behavior. Bucklespring's original audio is provided under **GNU GPL v2** with its full license in `doc/BUCKLESPRING_LICENSE.txt`. No audio is generated.
+
 **New in 0.12: Browse Mode sounds for website controls.** The actual 0.11 audio already contains role recordings for buttons, links, headings, checkboxes, radio buttons and menu items in both Navigation presets. The missing feedback came from event handling: moving NVDA's virtual Browse Mode caret inside a browser often doesn't emit a keyboard `event_gainFocus`. The attempted `visionHandlerExtensionPoints.post_browseModeMove` registration referenced a module instead of a real event instance, and the backup Quick Navigation wrapper accidentally called the caret movement function with the wrong arguments because its saved closure was overwritten. Both problems are fixed. When Browse Mode moves with arrows or single-letter shortcuts (`B` for button, `K` for link, `H` for heading, and other NVDA quick navigation types), the add-on now identifies the new web element and plays **one corresponding role cue**. It prefers a focusable link/button ancestor over a static text leaf; if no semantic role is found it uses the existing caret sound. The reversible hooks do not swallow any keys or require new WAVs. Real browser/Windows timing needs user acceptance testing.
 
-Open NVDA menu → Preferences → Settings → **Sound Themes**. Select three active theme packs. The single **Manage sound themes...** button opens a dialog with **Navigation**, **Typing** and **Keyboard Sounds** tabs. Each has Create/Copy, Edit, Rename, Delete, Import ZIP, Restore removed presets, Export ZIP and Use This Theme. The old **Import old sounds folder...** button has been removed. Built-in packs are read-only for editing (copy to a personal theme first), **but every pack may be removed from the list, including built-ins**. The single **Open sound folders** button opens the NVDA user effects root.
+Open NVDA menu → **Tools → Sound Themes settings...** and select the desired active theme packs. **Manage sound themes...** opens Navigation, Typing and Keyboard Sounds pages; each has Create/Copy, Edit, Rename, Delete, Import/Export ZIP and Use This Theme. The old **Import old sounds folder...** button remains removed. **All packs can be renamed, edited and deleted directly**, including presets supplied by the installer. The **Open sound folders** button opens the add-on's own effects directory. The **Edit sounds** dialog lists events alphabetically without category filters; it includes Done to keep edits and Cancel to undo all WAV changes made in that edit session.
 
-**New in 0.11: Enter, Space and Backspace typing coverage and unrestricted preset removal.** NVDA does not consistently send typed-character events for these keys in every editor. When Typing Sounds is enabled, the add-on now observes their first physical keydown **only while an editable text field is focused**, using NVDA's existing raw-key callback, and suppresses a matching later typed-character duplicate. Delete shares the Backspace typing sound. If the chosen typing pack has no separate `key.enter.wav`, `key.space.wav` or `key.backspace.wav`, the corresponding key plays a real `key.character.wav` sample from **that same pack**. Dedicated WAVs take precedence; empty packs stay silent. This is a playback fallback, **not an invented recording**: the 13 bundled typing packs do not all have dedicated recordings. Every built-in preset may be hidden persistently (including the last one) and restored through **Restore removed presets**; this preference survives add-on updates in NVDA user config. Personal theme deletion removes its files after confirmation. No preset is mandatory and no empty default is automatically created.
+**New in 0.11: Enter, Space and Backspace typing coverage and unrestricted preset removal.** NVDA does not consistently send typed-character events for these keys in every editor. Typing Sounds observes the first physical keydown **only while an editable text field is focused**, using NVDA's raw-key callback, and suppresses a matching later typed-character duplicate. Delete shares the Backspace typing sound. If a typing pack lacks a distinct Enter/Space/Backspace recording, the matching key plays its own genuine general character WAV; it never borrows from another pack. In 0.14 all folders are user-editable within the add-on. Deletion choices are remembered in native NVDA settings even if a later reinstall makes a packaged folder appear on disk again; the sound pack is not forced back into the list. Export WAV ZIP backups before upgrades.
 
 **New in 0.8: hear each sound as you navigate.** Arrow through the Navigation, Typing or Keyboard theme chooser in NVDA Settings, or through the theme list in the manager, to audition a real representative WAV from that exact pack without activating it. The event editor likewise previews each assigned event when its list selection moves. A missing WAV stays silent; no modal message interrupts arrowing. Previews decode in a latest-only background worker, so rapidly changing the highlighted item does not block the dialog or play a backlog of outdated previews. All other audio playback continues through the existing polyphonic sound engine.
 
@@ -35,7 +96,7 @@ Open NVDA menu → Preferences → Settings → **Sound Themes**. Select three a
 
 Theme list items are named simply `Cherry`, `DSA`, `KAT`, etc., **not** `Built-in: Cherry` or `Custom: Cherry`: type `C` in the list to find Cherry. The event list also omits redundant `Role:` / `State:` prefixes and assignment suffixes; key labels `A`–`Z` and `0`–`9` begin directly with those characters for first-letter lookup. Categories are still available in their separate category control. The selected theme's source and internal identifier are retained for operations without being added to the audible list name.
 
-In the keyboard editor, navigate to **Capture and preview a physical key**. Press any accessible key: the editor selects that physical-key event and immediately previews its assigned WAV. Outside the capture field, Tab/Escape still navigate normally. Select **Replace WAV** to choose a file from anywhere, regardless of filename; the editor saves it as `keyboard.a.wav`, `keyboard.f7.wav`, etc. There is no random-variation button for keyboard packs. Kliq packs have a genuine in-pack fallback sample for keys not individually recorded; custom packs without a fallback remain silent on missing bindings.
+In the keyboard editor, navigate to **Capture and preview a physical key**. Press any accessible key: the editor selects that physical-key event and immediately previews its assigned WAV. Outside the capture field, Tab/Escape still navigate normally. Choose **Replace WAV** for a press/combined sample and **Replace key release WAV** for a separate release sample. The editor saves them as `keyboard.a.wav` and `keyboard.a__release.wav`, regardless of source filenames. There is no random-variation button for keyboard packs. Real Kliq fallback recordings serve missing keys within the same pack, with separate press/release defaults; custom packs without fallbacks remain silent.
 
 Read [KEYBOARD_SOUNDS_GUIDE.md](KEYBOARD_SOUNDS_GUIDE.md) for full details, examples, and verified download links.
 
@@ -51,21 +112,22 @@ globalPlugins/soundThemes/effects/
     typing/voiceover/key.space.wav
     keyboard/voiceover/keyboard.shift_tab.wav
     keyboard/kat/keyboard.a.wav
+    keyboard/kat/keyboard.a__release.wav
     keyboard/kat/keyboard.default.wav
+    keyboard/bucklespring/keyboard.numpad_enter.wav
+    keyboard/bucklespring/keyboard.numpad_enter__release.wav
 
-NVDA user-config/soundThemes/effects/
-    navigation/<pack>/*.wav
-    typing/<pack>/*.wav
-    keyboard/<pack>/*.wav
+# Personal and shipped packs are now all in the add-on tree shown above.
+# Keyboard mode and removed-name preferences use NVDA's existing settings.
 ```
 
-The executable Python files and all bundled WAV assets now share **one `globalPlugins/soundThemes/` directory**. The second path is NVDA's separate *writable user configuration*, required so personal themes survive upgrades; it is not an extra bundled asset folder. Sound packs need only `.wav` files, not a theme manifest.
+The executable Python files and all WAV assets live under **one `globalPlugins/soundThemes/` directory inside the installed add-on**. This deliberately stops creating the old `NVDA user-config/soundThemes/effects/` folder. Sound packs need only `.wav` files, no JSON theme manifest. Because add-on reinstalls replace the contents of the installed folder, **export any modified packs before installing a newer version**.
 
 ## Source audio and compatibility
 
-The audio-bearing `upload/ScreenReaderSounds.zip` contains 50 top-level WAVs, another 24 WAVs inside `objdata.zip`, plus three original OGG recordings. Its source produced **54 unique canonical event assignments**, with inner role recordings taking precedence on duplicates and original OGG recordings decoded offline to real PCM WAVs. The seven real Kliq keyboard sets came from `upload/Sounds.zip`. **Version 0.9.0 adds the 86 navigation and 61 typing recordings from `upload/effects.zip`, for a total of 706 genuine WAVs in 23 distinct built-in folders** after merging event/file duplicates. No audio was synthesized. The Kliq importer intentionally omits unused key-release files. See [SOUND_SOURCES.md](SOUND_SOURCES.md) and [FEATURE_AUDIT.md](FEATURE_AUDIT.md).
+The original `upload/ScreenReaderSounds.zip` added 54 assignments. The new `upload/ScreenReaderSounds(1).zip` contains distinct VoiceOver and TalkBack folders plus nested VoiceOver role recordings. Its original WAV/OGG material is now included in Navigation and Typing; ScreenReaderSounds wins when an event also exists in navSounds. Kliq and Bucklespring supply physical press/release keyboard audio. The current bundle contains **1,398 genuine WAVs across 26 editable folders**, with no synthesized audio. See [SOUND_SOURCES.md](SOUND_SOURCES.md) and [FEATURE_AUDIT.md](FEATURE_AUDIT.md).
 
-**Seven built-in keyboard themes** are now available: Cherry, DSA, KAT (new-install default), MT3, OEM, SA and XDA. Every recorded key maps directly from its original scan code to one canonical WAV; a missing key uses the same pack's fixed, genuine `keyboard.default.wav` (no randomness or mixing packs). The additional original `keyboard/voiceover` theme remains available. Hardware-specific Fn/brightness buttons may not emit Windows keyboard events visible to NVDA. Some legacy ScreenReaderSounds event IDs are stored for later support but are not yet wired to dependable runtime triggers.
+**Eight switch keyboard themes** are now available: Bucklespring, Cherry, DSA, KAT (new-install default), MT3, OEM, SA and XDA. Every recorded key maps from the original scan code to real canonical press/release WAVs; a missing key may use the same pack's fixed genuine fallback of the correct phase (no randomness/mixing). The additional `keyboard/voiceover` theme remains available. Hardware-specific Fn/brightness buttons may not emit Windows keyboard events visible to NVDA. Some legacy ScreenReaderSounds event IDs remain assignable but not wired to dependable runtime triggers.
 
 Explorer item navigation prioritizes the real `role.listitem`/`role.treeviewitem` sample over unavailable `state.selected`. **Up to twelve sounds play concurrently**, through independent reusable NVDA WASAPI players. Long navigation WAVs do not stop or block another navigation or typing sample. The audio queue is bounded, discarding superseded *pending* cues only when the streams are busy; there is no unbounded playback backlog. This also applies to Keyboard Sounds when that mode is enabled. The existing rule that Keyboard Sounds disables Navigation and Typing remains intact. Test live responsiveness on Windows NVDA before considering it production-verified.
 
@@ -77,23 +139,45 @@ python scripts/build.py
 python scripts/build_source.py
 ```
 
-Run these commands **from the `soundThemes` source directory**. To reimport the newly supplied files in the developer workspace, run `python scripts/import_effects_archive.py ../upload/effects.zip` if the archive is present; it is *not* required at runtime or for GitHub builds because all selected original WAVs are included in source. Install `SoundThemesForNVDA-0.12.0.nvda-addon` using NVDA's add-on manager, restart NVDA, and disable old navSounds/ScreenReaderSounds or standalone keyboard-sound add-ons to avoid duplicate feedback. Existing selected `voiceover` remains active and gains 59 missing events; Navigation `default` can also be chosen. Try portable NVDA 2026 first: static Python tests outside Windows do **not** prove hardware event delivery, secure-desktop playback or accessible Windows wx dialogs.
+Run these commands **from the `soundThemes` source directory**. All real imported WAVs are already bundled. Developers with original archives can rerun `python scripts/import_kliq_audio.py ../upload/Sounds.zip`, `python scripts/import_bucklespring_audio.py ../upload/bucklespring-master.zip` and `python scripts/import_screenreader_multitheme.py '../upload/ScreenReaderSounds(1).zip'`. Install `SoundThemesForNVDA-0.15.0.nvda-addon` via NVDA's add-on manager, restart NVDA and disable other running keyboard/navigation audio add-ons if you hear duplicate effects. Before upgrading again, export any edited packs to ZIP. Try portable NVDA first: offline tests do **not** prove hardware event delivery, secure desktop playback or live wx dialog accessibility on Windows.
+Run these commands **from the `soundThemes` source directory**. All real imported WAVs are already bundled. Developers with original archives can rerun `python scripts/import_kliq_audio.py ../upload/Sounds.zip`, `python scripts/import_bucklespring_audio.py ../upload/bucklespring-master.zip` and `python scripts/import_screenreader_multitheme.py '../upload/ScreenReaderSounds(1).zip'`. Install `SoundThemesForNVDA-0.15.0.nvda-addon` via NVDA's add-on manager, restart NVDA and disable other running keyboard/navigation audio add-ons if you hear duplicate effects. Before upgrading again, export any edited packs to ZIP. Try portable NVDA first: offline tests do **not** prove hardware event delivery, secure desktop playback or live wx dialog accessibility on Windows.
 
 ## Publishing to GitHub and the NVDA Add-on Store
 
-Your `git push origin main` for commit `d51a169` and `git push origin v0.10.0` **both completed successfully**, according to your PowerShell transcript. The LF→CRLF warnings are normal Git line-ending notices, not failed uploads. Unpack the **v0.12.0 source** ZIP, then copy the contents of its `soundThemes` folder (including `manifest.ini`, `globalPlugins/`, `doc/`, `.github/` and this `README.md`) into the **existing** GitHub repository folder. Do not `git init`, clone a second time, re-add `origin` or reuse the old tag.
+Your `git push origin main` for commit `17eec09` and `git push origin v0.12.0` **both completed successfully**, according to your PowerShell transcript. You have **not confirmed publishing 0.13.0 or 0.14.0**, so use the **0.15.0 source** ZIP for this new update. Unpack it and copy its `soundThemes` folder contents into the **existing** GitHub repository folder. Do not `git init`, clone again, re-add `origin` or reuse a tag. LF→CRLF warnings are ordinary line-ending notices.
+
+### One-command release on Windows (recommended)
+
+Download the **separate** `release.ps1` file and place it **directly in**
+`D:\NVDA\soundThemes` next to `manifest.ini`. It is intentionally absent from
+the source ZIP and ignored by Git. On first use, release 0.15.0 explicitly:
+
+```powershell
+cd D:\NVDA\soundThemes
+powershell -NoProfile -ExecutionPolicy Bypass -File .\release.ps1 -Version 0.15.0
+```
+
+For later patch versions, omit `-Version`; it increments the current patch
+number. Supply `-Version 0.16.0` to choose a new minor version. Use `-DryRun`
+to check the intended version without changing files or contacting GitHub.
+The script requires Python, Git and normal GitHub authentication already set
+up, refuses the wrong repository/branch and existing tags, and aborts on tests
+or build errors. The tag triggers the included GitHub Actions release workflow.
+**Review and export your custom audio before running an update.**
+
+### Manual release (alternative)
 
 ```powershell
 cd D:\NVDA\soundThemes
 git pull --ff-only origin main
-# Now copy all files from inside the extracted v0.12.0 soundThemes folder here.
+# Now copy all files from inside the extracted v0.15.0 soundThemes folder here.
 git add -A
-git -c user.name="Nuttawat Seecham" -c user.email="nutblind2545t@gmail.com" commit -m "Release Sound Themes for NVDA 0.12.0: typing keys and preset removal"
+git -c user.name="Nuttawat Seecham" -c user.email="nutblind2545t@gmail.com" commit -m "Release Sound Themes for NVDA 0.15.0"
 git push origin main
-git tag v0.12.0
-git push origin v0.12.0
+git tag v0.15.0
+git push origin v0.15.0
 ```
 
-On `main` pushes, the included GitHub Actions workflow runs tests and packages a downloadable artifact. Pushing the **new** `v0.12.0` tag creates a separate GitHub Release with the actual `.nvda-addon` installer. The release appears only once its GitHub Actions workflow succeeds. GitHub authentication may be required (e.g. Git Credential Manager). The add-on homepage is provided by `url` in `manifest.ini`, which is the same as the required **homepage** field when publishing to the NVDA Add-on Store. Creating a GitHub repository/release does not automatically add the add-on to NVDA's Store: submit its **direct GitHub Release asset download URL** using the [official NVDA Add-on Store submission guide](https://github.com/nvaccess/addon-datastore/blob/master/docs/submitters/submissionGuide.md) and complete the review/validation process.
+On `main` pushes, the included GitHub Actions workflow runs tests and packages a downloadable artifact. Pushing the **new** `v0.15.0` tag creates a separate GitHub Release with the actual `.nvda-addon` installer. The release appears only once its GitHub Actions workflow succeeds. GitHub authentication may be required (e.g. Git Credential Manager). This GitHub Release mechanism **does not require submitting to the NVDA Add-on Store**. The optional Store submission procedure is documented at [NVDA Add-on Store submission guide](https://github.com/nvaccess/addon-datastore/blob/master/docs/submitters/submissionGuide.md).
 
-Sources: [navSounds](https://github.com/ahmedthebest31/navsounds), [official navSounds sound store](https://ahmedthebest31.github.io/navsounds/store/), ScreenReaderSounds files provided by the user, [Kliq (MIT; sound recordings by Cris)](https://github.com/crafter-station/kliq), [NVDA developer documentation](https://download.nvaccess.org/documentation/developerGuide.html). See `doc/KLIQ_LICENSE.txt`.
+Sources: [navSounds](https://github.com/ahmedthebest31/navsounds), [official navSounds sound store](https://ahmedthebest31.github.io/navsounds/store/), ScreenReaderSounds files provided by the user, [Kliq (MIT; sound recordings by Cris)](https://github.com/crafter-station/kliq), [Bucklespring (GPL-2.0)](https://github.com/zevv/bucklespring), [NVDA developer documentation](https://download.nvaccess.org/documentation/developerGuide.html). See `doc/KLIQ_LICENSE.txt` and `doc/BUCKLESPRING_LICENSE.txt`.

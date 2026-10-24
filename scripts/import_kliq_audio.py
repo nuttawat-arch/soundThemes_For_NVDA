@@ -1,4 +1,4 @@
-"""Import genuine individual Kliq key-down WAVs without bundling unused up WAVs.
+"""Import genuine individual Kliq key-down and key-up WAVs, preserving phase.
 
 Usage: python soundThemes/scripts/import_kliq_audio.py upload/Sounds.zip
 
@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 EFFECTS = ROOT / "globalPlugins" / "soundThemes" / "effects"
 SETS = ("Cherry", "DSA", "KAT", "MT3", "OEM", "SA", "XDA")
 MAX_AUDIO_BYTES = 8 * 1024 * 1024
-MEMBER = re.compile(r"^Sounds/(Cherry|DSA|KAT|MT3|OEM|SA|XDA)/([0-9]+)-down\.wav$")
+MEMBER = re.compile(r"^Sounds/(Cherry|DSA|KAT|MT3|OEM|SA|XDA)/([0-9]+)-(down|up)\.wav$")
 
 # IBM PC set-1 scan codes, plus the extended codes used by the Kliq source.
 SCAN_EVENTS = {
@@ -54,7 +54,7 @@ def _validate(contents: bytes, name: str):
 
 
 def import_kliq(archive_path: Path, destination: Path = EFFECTS) -> dict[str, int]:
-    """Import only actual key-down samples into the seven distinct packs."""
+    """Import every mapped physical press/release recording from seven packs."""
     archive_path = Path(archive_path)
     extracted = {name: {} for name in SETS}
     with ZipFile(archive_path) as archive:
@@ -67,13 +67,14 @@ def import_kliq(archive_path: Path, destination: Path = EFFECTS) -> dict[str, in
             match = MEMBER.fullmatch(info.filename)
             if not match:
                 continue
-            set_name, code = match.group(1), int(match.group(2))
+            set_name, code, phase = match.group(1), int(match.group(2)), match.group(3)
             event = SCAN_EVENTS.get(code)
             if event is None:
                 continue
             data = archive.read(info)
             _validate(data, info.filename)
-            extracted[set_name].setdefault("keyboard." + event, data)
+            sound_name = "keyboard." + event + (".release" if phase == "up" else "")
+            extracted[set_name].setdefault(sound_name, data)
         # The original single mouse-click recording can also serve a hover
         # event in navigation mode without introducing any synthetic audio.
         mouse_data = None
@@ -91,10 +92,17 @@ def import_kliq(archive_path: Path, destination: Path = EFFECTS) -> dict[str, in
         # F-keys, numpad, media and unusual hardware keys have no dedicated
         # recording in many sets. The real space-bar sound from the SAME set
         # is a fixed, non-random fallback; it does not create 200 duplicates.
-        fallback = sound_map.get("keyboard.space") or next(iter(sound_map.values()))
+        fallback = sound_map.get("keyboard.space") or next(
+            value for key, value in sound_map.items() if not key.endswith(".release"))
         sound_map["keyboard.default"] = fallback
+        release_fallback = sound_map.get("keyboard.space.release") or next(
+            (value for key, value in sound_map.items() if key.endswith(".release")), None)
+        if release_fallback is not None:
+            sound_map["keyboard.default.release"] = release_fallback
         for event, data in sound_map.items():
-            (folder / f"{event}.wav").write_bytes(data)
+            filename = (f"{event[:-8]}__release.wav" if event.endswith(".release")
+                        else f"{event}.wav")
+            (folder / filename).write_bytes(data)
         report[set_name.lower()] = len(sound_map)
     if mouse_data is not None:
         mouse_target = Path(destination) / "navigation" / "voiceover" / "nav.mouse.wav"
@@ -109,7 +117,7 @@ def main():
     parser.add_argument("archive", type=Path)
     parser.add_argument("--destination", type=Path, default=EFFECTS)
     args = parser.parse_args()
-    print("Imported genuine Kliq key-down WAV events:", import_kliq(args.archive, args.destination))
+    print("Imported genuine Kliq key-down and key-up WAV events:", import_kliq(args.archive, args.destination))
 
 
 if __name__ == "__main__":

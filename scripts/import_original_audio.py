@@ -84,7 +84,7 @@ def wav_members(archive_path: Path):
 def save_event(destination: Path, kind: str, pack: str, event: str,
                data: bytes, *, replace: bool = False) -> bool:
     if (kind not in ("navigation", "typing", "keyboard") or pack not in
-            ("voiceover", "classic-typewriter", "talkback-5", "talkback-6")
+            ("voiceover", "classic-typewriter", "talkback", "talkback-5", "talkback-6")
             or not EVENT_RE.fullmatch(event)
             or ((kind == "keyboard") != event.startswith("keyboard."))
             or (kind != "keyboard" and (event in TYPING_EVENTS) != (kind == "typing"))):

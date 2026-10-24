@@ -362,6 +362,11 @@ LEGACY_EVENTS = {
     "lock": "system.lock", "lockscreen": "system.lockscreen",
     "unlockscreen": "system.unlock", "error": "key.invalid",
     "end": "key.home_end", "space": "key.space",
+    "longclicked": "nav.long_activate", "complete": "system.complete",
+    "italic": "state.italic", "pausedfeedback": "system.paused_feedback",
+    "tutorialtrigger": "system.tutorial", "ready": "system.ready",
+    "tick": "nav.tick", "volumebeep": "system.volume_beep",
+    "edetabletext": "role.editabletext", "hedingh": "role.heading",
 }
 
 
@@ -384,6 +389,12 @@ def candidates(event_key: str) -> tuple[str, ...]:
         # separate Enter/Space/Backspace take. Never borrow from another pack,
         # synthesize a sound or mask a genuine dedicated recording.
         return (event_key, "key.character")
+    if event_key.startswith("keyboard.") and event_key.endswith(".release"):
+        # Release must never borrow a press recording: that produces an
+        # unexpected second click in packs without key-up samples.
+        if event_key == "keyboard.shift_tab.release":
+            return (event_key, "keyboard.tab.release", "keyboard.default.release")
+        return (event_key, "keyboard.default.release")
     if event_key == "keyboard.shift_tab":
         return (event_key, "keyboard.tab", "keyboard.default")
     if event_key.startswith("keyboard.") and event_key != "keyboard.default":

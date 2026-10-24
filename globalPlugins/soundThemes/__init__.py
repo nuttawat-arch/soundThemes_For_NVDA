@@ -8,13 +8,13 @@ from pathlib import Path
 
 import addonHandler
 import config
+import gui
 import globalPluginHandler
 import globalVars
 import speech
 import ui
 import wx
 from controlTypes import Role, State
-from gui.settingsDialogs import NVDASettingsDialog
 from logHandler import log
 from scriptHandler import script, getLastScriptRepeatCount
 from utils.security import post_sessionLockStateChanged
@@ -23,11 +23,13 @@ from .audio import AudioEngine
 from .browser import BrowseMonitor
 from .browse_events import browse_cue
 from .catalog import canonical_name, is_keyboard_event, is_typing_event
-from .folderpacks import ThemeStore
+from .folderpacks import EmbeddedThemeStore
 from .focus_policy import cue_for_focus
 from .keyboard_state import KeyboardState
 from .keyboard_catalog import event_for_virtual_key
+from .keyboard_playback import cue_for_transition
 from .modes import resolve_modes
+from .updater import STARTUP_DELAY_MS, UpdateChecker
 
 addonHandler.initTranslation()
 
@@ -49,6 +51,14 @@ config.conf.spec[SECTION] = {
     "theme": "string(default=builtin:voiceover)",
     "typingTheme": "string(default=builtin:classic-typewriter)",
     "keyboardTheme": "string(default=builtin:kat)",
+    # Small preferences use NVDA's normal config, not another sound folder.
+    "removedNavigationPresets": "string(default='')",
+    "removedTypingPresets": "string(default='')",
+    "removedKeyboardPresets": "string(default='')",
+    "keyboardPlaybackModes": "string(default='')",
+    "embeddedMigrationMap": "string(default='')",
+    "checkForUpdates": "boolean(default=true)",
+    "skippedUpdateVersion": "string(default='')",
 }
 
 
@@ -71,7 +81,6 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        from .settings import SoundSettingsPanel
 
         self._closed = False
         self._previous_role = None
@@ -82,30 +91,41 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         self._hover_timer = None
         self._lock_timer = None
         self._subscriptions = []
+        self._tools_item = None
+        self._tools_menu = None
+        self._settings_open = False
+        self._update_timer = None
+        self._updater = UpdateChecker()
         self._browse_monitor = BrowseMonitor(self)
         self.keys = KeyboardState()
         self._speech_original = None
         self._speech_wrapper = None
         self._role_speech_module = None
-        # One package root for the plugin and bundled effects. Personal themes
-        # remain in NVDA's writable configuration and survive add-on updates.
+        # One package root for *all* sound packs. Never create the former
+        # user-config/soundThemes/effects folder; it is read only for one-time
+        # migration of older user's custom audio and preferences.
         asset_root = Path(__file__).resolve().parent / "effects"
-        user_root = Path(globalVars.appArgs.configPath) / "soundThemes" / "effects"
-        self.navigation_store = ThemeStore(asset_root / "navigation", user_root / "navigation", "navigation")
-        self.typing_store = ThemeStore(asset_root / "typing", user_root / "typing", "typing")
-        self.keyboard_store = ThemeStore(asset_root / "keyboard", user_root / "keyboard", "keyboard")
+        preferences = config.conf[SECTION]
+        self.navigation_store = EmbeddedThemeStore(asset_root / "navigation", "navigation", preferences)
+        self.typing_store = EmbeddedThemeStore(asset_root / "typing", "typing", preferences)
+        self.keyboard_store = EmbeddedThemeStore(asset_root / "keyboard", "keyboard", preferences)
         if self.setting("keyboard"):
             # Guard settings migrated from older versions and manually edited configs.
             config.conf[SECTION]["navigation"] = False
             config.conf[SECTION]["typing"] = False
+        legacy_root = Path(globalVars.appArgs.configPath) / "soundThemes"
+        self._legacy_theme_ids = {}
+        for store in (self.navigation_store, self.typing_store, self.keyboard_store):
+            try:
+                self._legacy_theme_ids[store.kind] = store.migrate_external(legacy_root / "effects")
+            except (OSError, ValueError) as error:
+                log.warning("Sound Themes: older sound pack migration skipped: %s", error)
         self._migrate_manifest_themes()
-        self._migrate_old_user_themes(Path(globalVars.appArgs.configPath) / "soundThemes" / "themes")
+        self._migrate_old_user_themes(legacy_root / "themes")
         self.audio = AudioEngine(_output_device, log)
         self.reload_sounds()
 
-        SoundSettingsPanel.plugin = self
-        if SoundSettingsPanel not in NVDASettingsDialog.categoryClasses:
-            NVDASettingsDialog.categoryClasses.append(SoundSettingsPanel)
+        self._install_tools_menu()
         self._install_speech_filter()
         try:
             from speech.extensions import post_speechPaused
@@ -142,6 +162,38 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             self._register(postNvdaStartup, self._startup)
         except (ImportError, AttributeError):
             pass
+        if self.setting("checkForUpdates"):
+            self._update_timer = wx.CallLater(STARTUP_DELAY_MS, self._updater.check, False)
+
+    def _install_tools_menu(self):
+        """One direct Tools entry; no nested NVDA Settings category."""
+        try:
+            tray = gui.mainFrame.sysTrayIcon
+            self._tools_menu = tray.toolsMenu
+            self._tools_item = self._tools_menu.Append(wx.ID_ANY, _("Sound Themes &settings..."))
+            tray.Bind(wx.EVT_MENU, self._on_tools_settings, id=self._tools_item.GetId())
+        except (AttributeError, RuntimeError) as error:
+            log.warning("Sound Themes: Tools menu is unavailable: %s", error)
+
+    def _on_tools_settings(self, evt):
+        # Wait for the native menu to close before opening a modal dialog.
+        wx.CallAfter(self._show_settings)
+
+    def _show_settings(self):
+        if self._closed or self._settings_open:
+            return
+        from .settings import SoundSettingsDialog
+        self._settings_open = True
+        gui.mainFrame.prePopup()
+        try:
+            dialog = SoundSettingsDialog(gui.mainFrame, self)
+            try:
+                dialog.ShowModal()
+            finally:
+                dialog.Destroy()
+        finally:
+            gui.mainFrame.postPopup()
+            self._settings_open = False
 
     def _register(self, point, callback):
         try:
@@ -178,11 +230,19 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         current = self.setting("theme")
         ids = [identifier for identifier, _ in names]
         if current not in ids:
+            current = self._legacy_theme_ids.get("navigation", {}).get(current, current)
+            if current.startswith("builtin:"):
+                current = "user:" + current.split(":", 1)[1]
+        if current not in ids:
             current = ids[0] if ids else ""
             config.conf[SECTION]["theme"] = current
         typing_names = self.typing_store.themes()
         typing_ids = [identifier for identifier, _ in typing_names]
         typing_theme = self.setting("typingTheme")
+        if typing_theme not in typing_ids:
+            typing_theme = self._legacy_theme_ids.get("typing", {}).get(typing_theme, typing_theme)
+            if typing_theme.startswith("builtin:"):
+                typing_theme = "user:" + typing_theme.split(":", 1)[1]
         if typing_theme not in typing_ids:
             typing_theme = typing_ids[0] if typing_ids else ""
             config.conf[SECTION]["typingTheme"] = typing_theme
@@ -190,8 +250,14 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         keyboard_theme = self.setting("keyboardTheme")
         keyboard_ids = [identifier for identifier, _ in keyboard_names]
         if keyboard_theme not in keyboard_ids:
+            keyboard_theme = self._legacy_theme_ids.get("keyboard", {}).get(keyboard_theme, keyboard_theme)
+            if keyboard_theme.startswith("builtin:"):
+                keyboard_theme = "user:" + keyboard_theme.split(":", 1)[1]
+        if keyboard_theme not in keyboard_ids:
             keyboard_theme = keyboard_ids[0] if keyboard_ids else ""
             config.conf[SECTION]["keyboardTheme"] = keyboard_theme
+        self._keyboard_playback_mode = (self.keyboard_store.playback_mode(keyboard_theme)
+                                        if keyboard_theme else "press")
         self.audio.reload(self.navigation_store, current,
                           self.typing_store, typing_theme, self.setting("volume"),
                           self.keyboard_store, keyboard_theme)
@@ -238,17 +304,22 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             # De-duplicate generic Shift/Ctrl/Alt and their left/right VKs.
             # One physical keydown must play ONE assigned sample, even when
             # a keyboard driver reports both aliases to NVDA.
-            first, physical_vk = self.keys.update_physical(
+            changed, physical_vk = self.keys.transition_physical(
                 vkCode, scanCode, extended, pressed,
             )
-            if first and not self._closed and self.setting("keyboard"):
-                event = event_for_virtual_key(physical_vk, scanCode, extended)
+            if changed and not self._closed and self.setting("keyboard"):
+                event = event_for_virtual_key(vkCode, scanCode, extended)
                 if physical_vk == 0x09 and self.keys.is_pressed(0x10):
                     event = "keyboard.shift_tab"
                 # The audio engine only queues cached bytes. Scheduling via
                 # wx.CallAfter needlessly delays fast keyboard feedback.
-                self.play_event(event, .018)
-            elif first and not self._closed and self.setting("typing"):
+                cue = cue_for_transition(event, pressed, changed, self._keyboard_playback_mode)
+                if cue is not None:
+                    # The pressed-key state already filters auto-repeat;
+                    # a further 18 ms audio throttle clips genuine fast taps.
+                    # Never wait, sleep or decode audio on NVDA's key hook.
+                    self.play_event(cue, 0)
+            elif changed and pressed and not self._closed and self.setting("typing"):
                 # NVDA doesn't reliably emit typedCharacter for Return,
                 # Backspace, Delete or Space in every editable application.
                 # Listen to the existing raw hook only for these four keys
@@ -616,9 +687,19 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         self._change_theme(1)
 
     def terminate(self):
-        from .settings import SoundSettingsPanel
         self.play_event("system.stop", 0)
         self._closed = True
+        self._updater.terminate()
+        if self._update_timer is not None:
+            self._update_timer.Stop()
+        if self._tools_item is not None and self._tools_menu is not None:
+            try:
+                tray = gui.mainFrame.sysTrayIcon
+                tray.Unbind(wx.EVT_MENU, id=self._tools_item.GetId())
+                self._tools_menu.Delete(self._tools_item.GetId())
+            except (AttributeError, RuntimeError):
+                pass
+            self._tools_item = None
         if self._hover_timer is not None:
             self._hover_timer.Stop()
         if self._lock_timer is not None:
@@ -634,8 +715,5 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         if self._role_speech_module is not None:
             if getattr(self._role_speech_module, "getPropertiesSpeech", None) is self._speech_wrapper:
                 self._role_speech_module.getPropertiesSpeech = self._speech_original
-        if SoundSettingsPanel in NVDASettingsDialog.categoryClasses:
-            NVDASettingsDialog.categoryClasses.remove(SoundSettingsPanel)
-        SoundSettingsPanel.plugin = None
         self.audio.close()
         super().terminate()

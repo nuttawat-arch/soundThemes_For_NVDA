@@ -39,6 +39,11 @@ class BrowseMonitor:
         if original:
             quick_original = original
             def quick(instance, *args, **kwargs):
+                # makeTextInfo can query a large remote/virtual document. Do
+                # not pay that cost when web navigation audio is switched off.
+                if (not self.plugin.setting("enabled") or
+                        not self.plugin.setting("navigation")):
+                    return quick_original(instance, *args, **kwargs)
                 before = snapshot(instance)
                 result = quick_original(instance, *args, **kwargs)
                 after = snapshot(instance)
@@ -57,10 +62,14 @@ class BrowseMonitor:
         if original:
             caret_original = original
             def caret(instance, *args, **kwargs):
+                if (not self.plugin.setting("enabled") or
+                        not self.plugin.setting("navigation") or
+                        not self.plugin.setting("arrowNavSounds")):
+                    return caret_original(instance, *args, **kwargs)
                 before = snapshot(instance)
                 result = caret_original(instance, *args, **kwargs)
                 after = snapshot(instance)
-                if self.plugin.setting("arrowNavSounds") and moved(before, after):
+                if moved(before, after):
                     if isinstance(instance, browseMode.BrowseModeTreeInterceptor):
                         # An arrow can move to a web button without changing
                         # keyboard focus. Use the object at the NEW caret.

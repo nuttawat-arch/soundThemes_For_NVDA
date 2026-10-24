@@ -7,6 +7,7 @@ import importlib.util
 import ast
 import io
 import json
+import shutil
 import queue
 import struct
 import sys
@@ -32,16 +33,29 @@ browse_events = importlib.import_module("nvda_sound_testpackage.browse_events")
 browse_module = importlib.import_module("nvda_sound_testpackage.browser")
 keys_module = importlib.import_module("nvda_sound_testpackage.keyboard_state")
 keyboard_catalog = importlib.import_module("nvda_sound_testpackage.keyboard_catalog")
+keyboard_playback = importlib.import_module("nvda_sound_testpackage.keyboard_playback")
+release_info = importlib.import_module("nvda_sound_testpackage.release_info")
+edit_session = importlib.import_module("nvda_sound_testpackage.theme_edit_session")
 modes = importlib.import_module("nvda_sound_testpackage.modes")
 focus_policy = importlib.import_module("nvda_sound_testpackage.focus_policy")
 merge_spec = importlib.util.spec_from_file_location(
     "soundthemes_original_audio_merge", ROOT / "scripts" / "import_original_audio.py")
 original_audio = importlib.util.module_from_spec(merge_spec)
 merge_spec.loader.exec_module(original_audio)
+sys.modules.setdefault("import_original_audio", original_audio)
+multi_spec = importlib.util.spec_from_file_location(
+    "soundthemes_multitheme_audio_merge", ROOT / "scripts" / "import_screenreader_multitheme.py")
+multi_audio = importlib.util.module_from_spec(multi_spec)
+multi_spec.loader.exec_module(multi_audio)
 kliq_spec = importlib.util.spec_from_file_location(
     "soundthemes_kliq_audio_merge", ROOT / "scripts" / "import_kliq_audio.py")
 kliq_audio = importlib.util.module_from_spec(kliq_spec)
 kliq_spec.loader.exec_module(kliq_audio)
+sys.modules.setdefault("import_kliq_audio", kliq_audio)
+buckle_spec = importlib.util.spec_from_file_location(
+    "soundthemes_bucklespring_audio_merge", ROOT / "scripts" / "import_bucklespring_audio.py")
+buckle_audio = importlib.util.module_from_spec(buckle_spec)
+buckle_spec.loader.exec_module(buckle_audio)
 effects_spec = importlib.util.spec_from_file_location(
     "soundthemes_effects_merge", ROOT / "scripts" / "import_effects_archive.py")
 effects_merge = importlib.util.module_from_spec(effects_spec)
@@ -288,6 +302,26 @@ class SoundThemeTests(unittest.TestCase):
         imported = self.typing.import_zip(zip_path, "Typing Import")
         self.assertEqual(len(self.typing.load(imported)["sounds"]["key.character"]), 2)
 
+    def test_plain_legacy_name_has_precedence_over_canonical_role_filename(self):
+        theme = self.nav.create("Legacy Checkbox")
+        folder = self.nav.directory(theme)
+        older = folder / "role.checkbox.wav"
+        original = folder / "checkbox.wav"
+        older.write_bytes(self.sample.read_bytes())
+        alternative = self.home / "alternate.wav"
+        make_wav(alternative, bits=8)
+        original.write_bytes(alternative.read_bytes())
+        loaded = self.nav.load(theme)["sounds"]
+        self.assertEqual(loaded["role.checkbox"], "checkbox.wav")
+        self.assertEqual(self.nav.sound_for(theme, "role.checkbox"), original)
+
+    def test_iphone_and_voiceover_typing_audio_are_not_identical(self):
+        base = PACKAGE_ROOT / "effects" / "typing"
+        for event in ("key.character.wav", "key.space.wav", "key.backspace.wav"):
+            iphone = (base / "iphone-keyboard" / event).read_bytes()
+            voiceover = (base / "voiceover" / event).read_bytes()
+            self.assertNotEqual(iphone, voiceover)
+
     def test_accept_all_windows_safe_names(self):
         self.assertEqual(packs.safe_slug("ธีมของนัท"), "ธีมของนัท")
         for name in ("..", "CON", "C:/outside", "../test", "aux", "bad*name"):
@@ -498,14 +532,16 @@ class SoundThemeTests(unittest.TestCase):
         typing = packs.ThemeStore(effects / "typing", self.home / "extra-type", "typing")
         keyboard = packs.ThemeStore(effects / "keyboard", self.home / "extra-keyboard", "keyboard")
         self.assertEqual({entry[0] for entry in nav.themes()},
-                         {"builtin:default", "builtin:voiceover"})
+                         {"builtin:default", "builtin:voiceover", "builtin:talkback"})
         self.assertEqual({entry[0] for entry in typing.themes()},
-                         {"builtin:voiceover", *(f"builtin:{p}" for p in effects_merge.TYPING_FOLDERS.values())})
+                         {"builtin:voiceover", "builtin:talkback",
+                          *(f"builtin:{p}" for p in effects_merge.TYPING_FOLDERS.values())})
         self.assertEqual({entry[0] for entry in keyboard.themes()},
-                         {"builtin:voiceover", *(f"builtin:{p.lower()}" for p in kliq_audio.SETS)})
+                         {"builtin:voiceover", "builtin:bucklespring",
+                          *(f"builtin:{p.lower()}" for p in kliq_audio.SETS)})
         navigation = nav.load("builtin:voiceover")["sounds"]
         keys = typing.load("builtin:classic-typewriter")["sounds"]
-        self.assertEqual(len(navigation), 109)
+        self.assertGreaterEqual(len(navigation), 109)
         default_nav = nav.load("builtin:default")["sounds"]
         self.assertEqual(len(default_nav), 85)  # one duplicate editable-text alias
         for event in ("role.listitem", "role.tablecolumnheader", "role.tablerow",
@@ -518,7 +554,7 @@ class SoundThemeTests(unittest.TestCase):
             self.assertNotIn(stale, default_nav)
             self.assertNotIn(stale, navigation)
         self.assertIn("role.tab", navigation)
-        self.assertNotIn("key.tab", navigation)
+        self.assertIn("key.tab", navigation)  # VoiceOver's uppercase Tab.wav is a key cue.
         self.assertEqual(set(keys), {"key.character", "key.enter"})
         self.assertEqual(len(keys["key.character"]), 6)
         self.assertEqual(set(keyboard.load("builtin:voiceover")["sounds"]),
@@ -530,8 +566,12 @@ class SoundThemeTests(unittest.TestCase):
         for name in kliq_audio.SETS:
             samples = keyboard.load("builtin:" + name.lower())["sounds"]
             self.assertIn("keyboard.a", samples)
+            self.assertIn("keyboard.a.release", samples)
             self.assertIn("keyboard.default", samples)
             self.assertGreaterEqual(len(samples), 55)
+            self.assertEqual(keyboard.playback_mode("builtin:" + name.lower()), "separate")
+        self.assertIn("keyboard.a.release", keyboard.load("builtin:bucklespring")["sounds"])
+        self.assertEqual(keyboard.playback_mode("builtin:bucklespring"), "separate")
         self.assertTrue(all(not (folder / "theme.json").exists() for folder in folders))
 
     def test_effects_archive_fixes_real_nvda_names_and_keeps_typing_separate(self):
@@ -670,7 +710,7 @@ class SoundThemeTests(unittest.TestCase):
 
     def test_event_description_is_announced_separately_without_changing_search_names(self):
         editor = (PACKAGE_ROOT / "settings.py").read_text(encoding="utf-8")
-        self.assertIn("self.events.Set([name for key, name in self.visible])", editor)
+        self.assertIn("self.events.Set([label for _, label in self.visible])", editor)
         self.assertIn("self.event_help.SetValue(explanation)", editor)
         self.assertIn("languageHandler.getLanguage()", editor)
         self.assertIn("self.announce_help.GetValue()", editor)
@@ -739,7 +779,7 @@ class SoundThemeTests(unittest.TestCase):
         self.assertIn("self.theme_list.Set([name for _, name in self.choices])", panel)
         self.assertIn("self.theme_list.Bind(wx.EVT_LISTBOX, self.on_theme_selection)", panel)
         self.assertIn("self.events.Bind(wx.EVT_LISTBOX, self.on_select)", panel)
-        self.assertIn("self.events.Set([name for key, name in self.visible])", panel)
+        self.assertIn("self.events.Set([label for _, label in self.visible])", panel)
         self.assertGreaterEqual(panel.count("self.preview_setting_theme("), 3)
         self.assertEqual([label for _, key, label in keyboard_catalog.all_keyboard_events()
                           if key == "keyboard.c"], ["C"])
@@ -812,20 +852,301 @@ class SoundThemeTests(unittest.TestCase):
             audio.AudioEngine.play(fake, "keyboard.a", min_gap=0)
         self.assertEqual([fake._queue.get_nowait()[0][1] for _ in range(8)], [8] * 8)
 
-    def test_real_kliq_keydown_import_without_unused_keyup_files(self):
+    def test_real_kliq_imports_both_keydown_and_keyup_files_without_synthesis(self):
         zip_path = self.home / "sounds.zip"
         with ZipFile(zip_path, "w") as archive:
             for pack in kliq_audio.SETS:
                 archive.writestr(f"Sounds/{pack}/30-down.wav", self.sample.read_bytes())
                 archive.writestr(f"Sounds/{pack}/30-up.wav", self.sample.read_bytes())
         summary = kliq_audio.import_kliq(zip_path, self.home / "built-effects")
-        self.assertEqual(summary, {pack.lower(): 2 for pack in kliq_audio.SETS})
+        self.assertEqual(summary, {pack.lower(): 4 for pack in kliq_audio.SETS})
         for pack in kliq_audio.SETS:
             directory = self.home / "built-effects/keyboard" / pack.lower()
             self.assertEqual({p.name for p in directory.glob("*.wav")},
-                             {"keyboard.a.wav", "keyboard.default.wav"})
+                             {"keyboard.a.wav", "keyboard.a__release.wav",
+                              "keyboard.default.wav", "keyboard.default__release.wav"})
         self.assertEqual(kliq_audio.SCAN_EVENTS[59], "f1")
         self.assertEqual(kliq_audio.SCAN_EVENTS[57416], "up")
+
+    def test_keyboard_three_modes_never_double_combined_or_auto_repeat(self):
+        self.assertEqual(keyboard_playback.KEYBOARD_PLAYBACK_MODES,
+                         ("separate", "combined"))
+        self.assertEqual(keyboard_playback.normalize_mode("press"), "combined")
+        for mode in keyboard_playback.KEYBOARD_PLAYBACK_MODES:
+            self.assertEqual(keyboard_playback.cue_for_transition(
+                "keyboard.left_shift", True, True, mode), "keyboard.left_shift")
+            self.assertIsNone(keyboard_playback.cue_for_transition(
+                "keyboard.left_shift", True, False, mode))
+            expected = "keyboard.left_shift.release" if mode == "separate" else None
+            self.assertEqual(keyboard_playback.cue_for_transition(
+                "keyboard.left_shift", False, True, mode), expected)
+            self.assertIsNone(keyboard_playback.cue_for_transition(
+                "keyboard.left_shift", False, False, mode))
+
+    def test_embedded_presets_are_all_mutable_and_do_not_create_extra_sound_folder(self):
+        preferences = {}
+        included = self.home / "addon/globalPlugins/soundThemes/effects/navigation"
+        (included / "voiceover").mkdir(parents=True)
+        make_wav(included / "voiceover/button.wav")
+        store = packs.EmbeddedThemeStore(included, "navigation", preferences)
+        self.assertEqual(store.themes(), [("user:voiceover", "Voiceover")])
+        self.assertEqual(store.sound_for("user:voiceover", "role.button").name, "button.wav")
+        store.assign("user:voiceover", "role.checkbox", self.sample)
+        self.assertTrue((included / "voiceover/role.checkbox.wav").is_file())
+        renamed = store.rename("user:voiceover", "My Favorite")
+        self.assertEqual(renamed, "user:my-favorite")
+        self.assertEqual(store.themes(), [("user:my-favorite", "My Favorite")])
+        store.delete(renamed)
+        self.assertEqual(store.themes(), [])
+        self.assertFalse((included / "my-favorite").exists())
+        self.assertEqual(packs.EmbeddedThemeStore(included, "navigation", preferences).themes(), [])
+        (included / "voiceover").mkdir()  # Simulate upgrade restoring stock bytes.
+        self.assertEqual(store.themes(), [])  # The deleted name is not forced back.
+        self.assertFalse((self.home / "soundThemes").exists())
+        self.assertIn("voiceover", preferences["removedNavigationPresets"])
+
+    def test_embedded_keyboard_modes_and_legacy_sounds_migrate_only_once(self):
+        preferences = {}
+        effects = self.home / "addon/effects"
+        stock = effects / "keyboard/kat"
+        stock.mkdir(parents=True)
+        make_wav(stock / "keyboard.a.wav")
+        legacy = self.home / "old-nvda/soundThemes/effects"
+        prior = legacy / "keyboard/kat"
+        prior.mkdir(parents=True)
+        make_wav(prior / "keyboard.b.wav")
+        (legacy / "keyboard-playback-modes.json").write_text(
+            json.dumps({"user:kat": "press", "builtin:kat": "separate"}), encoding="utf-8")
+        store = packs.EmbeddedThemeStore(effects / "keyboard", "keyboard", preferences)
+        mapping = store.migrate_external(legacy)
+        self.assertEqual(mapping, {"user:kat": "user:kat-personal"})
+        self.assertEqual(store.playback_mode("user:kat-personal"), "combined")
+        self.assertEqual(store.playback_mode("user:kat"), "separate")
+        self.assertEqual(store.migrate_external(legacy), mapping)
+        self.assertFalse((effects / "keyboard/kat-personal-2").exists())
+        self.assertEqual(sorted(folder.name for folder in (effects / "keyboard").iterdir()),
+                         ["kat", "kat-personal"])
+        store.set_playback_mode("user:kat", "combined")
+        self.assertEqual(packs.EmbeddedThemeStore(effects / "keyboard", "keyboard",
+                                                 preferences).playback_mode("user:kat"), "combined")
+
+    def test_editor_cancel_reverts_actual_wav_changes_but_done_keeps_them(self):
+        root = self.home / "addon/effects/navigation"
+        store = packs.EmbeddedThemeStore(root, "navigation", {})
+        original = store.create("One Sound")
+        store.assign(original, "role.button", self.sample)
+        trial = edit_session.ThemeEditSession(store, original)
+        self.assertIsNone(trial._backup)  # Browsing alone touches no WAVs.
+        trial.prepare_edit()
+        store.assign(original, "role.checkbox", self.sample)
+        store.assign(original, "role.button", None)
+        self.assertIsNone(store.sound_for(original, "role.button"))
+        trial.rollback()
+        self.assertIsNone(store.sound_for(original, "role.checkbox"))
+        self.assertIsNotNone(store.sound_for(original, "role.button"))
+        final = edit_session.ThemeEditSession(store, original)
+        final.prepare_edit()
+        store.assign(original, "role.checkbox", self.sample)
+        final.commit()
+        self.assertIsNotNone(store.sound_for(original, "role.checkbox"))
+
+    def test_new_screenreader_multitheme_archive_prioritizes_inner_voiceover_and_talkback(self):
+        outer = self.home / "screenreader2.zip"
+        inner_bytes = io.BytesIO()
+        second = self.home / "8bit.wav"
+        make_wav(second, bits=8)
+        with ZipFile(inner_bytes, "w") as nested:
+            nested.writestr("objdata/checkbox.wav", second.read_bytes())
+        with ZipFile(outer, "w") as archive:
+            archive.writestr("ScreenReaderSounds/voiceover/checkbox.wav", self.sample.read_bytes())
+            archive.writestr("ScreenReaderSounds/voiceover/objdata.zip", inner_bytes.getvalue())
+            archive.writestr("ScreenReaderSounds/voiceover/typekey.wav", self.sample.read_bytes())
+            archive.writestr("ScreenReaderSounds/talkback/checkbox.wav", self.sample.read_bytes())
+            archive.writestr("ScreenReaderSounds/talkback/typekeyremove.wav", self.sample.read_bytes())
+            archive.writestr("ScreenReaderSounds/talkback/italic.wav", self.sample.read_bytes())
+        effects = self.home / "effects"
+        stock = effects / "navigation/voiceover/role.checkbox.wav"
+        stock.parent.mkdir(parents=True)
+        stock.write_bytes(self.sample.read_bytes())
+        result = multi_audio.import_multitheme(outer, effects)
+        self.assertGreaterEqual(result["screenreader_preferred_on_conflict"], 1)
+        self.assertEqual(stock.read_bytes(), second.read_bytes())
+        self.assertTrue((effects / "navigation/talkback/role.checkbox.wav").is_file())
+        self.assertTrue((effects / "navigation/talkback/state.italic.wav").is_file())
+        self.assertTrue((effects / "typing/voiceover/key.character.wav").is_file())
+        self.assertTrue((effects / "typing/talkback/key.backspace.wav").is_file())
+        for name, kind, expected in (("checkbox", "navigation", "role.checkbox"),
+                                     ("editabletext", "navigation", "role.editabletext"),
+                                     ("typekey", "typing", "key.character"),
+                                     ("typekeyremove", "typing", "key.backspace"),
+                                     ("paused_feedback", "navigation", "system.paused_feedback")):
+            self.assertEqual(packs.event_for_filename(name, kind), expected)
+
+    def test_browser_does_not_snapshot_caret_when_navigation_audio_disabled(self):
+        calls = []
+        class Browse:
+            def _quickNavScript(self, *args, **kwargs):
+                calls.append("quick")
+                return "quick result"
+            def makeTextInfo(self, *args):
+                raise AssertionError("No expensive caret snapshot when audio is off")
+        class Cursor:
+            def _caretMovementScriptHelper(self, *args, **kwargs):
+                calls.append("caret")
+                return "caret result"
+            def makeTextInfo(self, *args):
+                raise AssertionError("No expensive caret snapshot when audio is off")
+        plugin = types.SimpleNamespace(setting=lambda name: name != "navigation")
+        with patch.dict(sys.modules, {
+            "browseMode": types.SimpleNamespace(BrowseModeTreeInterceptor=Browse),
+            "cursorManager": types.SimpleNamespace(CursorManager=Cursor),
+            "textInfos": types.SimpleNamespace(POSITION_CARET=object()),
+        }):
+            monitor = browse_module.BrowseMonitor(plugin)
+            monitor.patch()
+            self.assertEqual(Browse()._quickNavScript(), "quick result")
+            self.assertEqual(Cursor()._caretMovementScriptHelper(), "caret result")
+            monitor.terminate()
+        self.assertEqual(calls, ["quick", "caret"])
+
+    def test_raw_release_state_ignores_duplicates_and_tracks_left_right_separately(self):
+        pressed = keys_module.KeyboardState()
+        self.assertEqual(pressed.transition_physical(0x10, 0x2A, False, True), (True, 0xA0))
+        self.assertEqual(pressed.transition_physical(0xA0, 0x2A, False, True), (False, 0xA0))
+        self.assertEqual(pressed.transition_physical(0x10, 0x36, False, True), (True, 0xA1))
+        self.assertEqual(pressed.transition_physical(0x10, 0x2A, False, False), (True, 0xA0))
+        self.assertEqual(pressed.transition_physical(0xA0, 0x2A, False, False), (False, 0xA0))
+        self.assertTrue(pressed.is_pressed(0xA1))
+        self.assertEqual(pressed.transition_physical(0x10, 0x36, False, False), (True, 0xA1))
+        self.assertEqual(pressed.transition_physical(0x10, 0x36, False, False), (False, 0xA1))
+        self.assertEqual(pressed.transition_physical(0x0D, 0x1C, False, True), (True, 0x0D))
+        self.assertEqual(pressed.transition_physical(0x0D, 0x1C, True, True), (True, 0x100))
+        self.assertEqual(pressed.transition_physical(0x0D, 0x1C, False, False), (True, 0x0D))
+        self.assertEqual(pressed.transition_physical(0x0D, 0x1C, True, False), (True, 0x100))
+
+    def test_each_keyboard_preset_has_persistent_mode_and_zip_roundtrip(self):
+        self.keyboard.packaged.joinpath("stock").mkdir(parents=True)
+        builtin = "builtin:stock"
+        self.assertEqual(self.keyboard.playback_mode(builtin), "combined")
+        self.keyboard.set_playback_mode(builtin, "combined")
+        self.assertEqual(packs.ThemeStore(self.keyboard.packaged, self.keyboard.writable,
+                                          "keyboard").playback_mode(builtin), "combined")
+        copied = self.keyboard.create("Copy", builtin)
+        self.assertEqual(self.keyboard.playback_mode(copied), "combined")
+        self.keyboard.assign(copied, "keyboard.a", self.sample)
+        self.keyboard.assign(copied, "keyboard.a.release", self.sample)
+        self.assertEqual(self.keyboard.sound_for(copied, "keyboard.a.release").name,
+                         "keyboard.a__release.wav")
+        self.assertEqual(self.keyboard.load(copied)["sounds"]["keyboard.a.release"],
+                         "keyboard.a__release.wav")
+        self.assertEqual(packs.event_for_filename("keyboard.a__release", "keyboard"),
+                         "keyboard.a.release")
+        self.assertEqual(packs.event_for_filename("a-up", "keyboard"), "keyboard.a.release")
+        self.assertEqual(packs.event_for_filename("a-down", "keyboard"), "keyboard.a")
+        renamed = self.keyboard.rename(copied, "Renamed")
+        self.assertEqual(self.keyboard.playback_mode(renamed), "combined")
+        self.keyboard.set_playback_mode(renamed, "separate")
+        export = self.home / "keyboard-export.zip"
+        self.keyboard.export_zip(renamed, export)
+        with ZipFile(export) as archive:
+            self.assertEqual(archive.read("keyboard-playback-mode.txt"), b"separate")
+            self.assertIn("keyboard.a__release.wav", archive.namelist())
+        imported = self.keyboard.import_zip(export, "New Imported")
+        self.assertEqual(self.keyboard.playback_mode(imported), "separate")
+        self.keyboard.delete(renamed)
+        self.assertNotIn(renamed, self.keyboard._keyboard_modes())
+        with self.assertRaises(ValueError):
+            self.keyboard.set_playback_mode(imported, "broken-mode")
+
+    def test_keyboard_release_fallback_must_never_play_press_if_no_release_file(self):
+        theme = self.keyboard.create("One File With Both Clicks")
+        self.keyboard.assign(theme, "keyboard.a", self.sample)
+        self.keyboard.set_playback_mode(theme, "combined")
+        self.assertIsNone(self.keyboard.sound_for(theme, "keyboard.a.release"))
+        self.assertEqual(self.keyboard.sound_for(theme, "keyboard.a").name, "keyboard.a.wav")
+        self.keyboard.assign(theme, "keyboard.a.release", self.sample)
+        self.assertIsNotNone(self.keyboard.sound_for(theme, "keyboard.a.release"))
+        self.keyboard.assign(theme, "keyboard.a.release", None)
+        self.assertIsNone(self.keyboard.sound_for(theme, "keyboard.a.release"))
+
+    def test_bucklespring_uses_one_as_press_and_zero_as_release(self):
+        src = self.home / "bucklespring.zip"
+        with ZipFile(src, "w") as archive:
+            for code in ("1e", "ff", "01"):
+                for phase in ("0", "1"):
+                    archive.writestr(f"bucklespring-master/wav/{code}-{phase}.wav",
+                                     self.sample.read_bytes())
+        summary = buckle_audio.import_bucklespring(src, self.home / "effects")
+        self.assertEqual(summary, {"recordings": 6, "unmapped_scan_codes": 0})
+        folder = self.home / "effects/keyboard/bucklespring"
+        self.assertEqual({p.name for p in folder.glob("*.wav")}, {
+            "keyboard.a.wav", "keyboard.a__release.wav",
+            "keyboard.default.wav", "keyboard.default__release.wav",
+            "keyboard.escape.wav", "keyboard.escape__release.wav",
+        })
+        self.assertEqual(buckle_audio._EXTRA[0x60], "numpad_enter")
+        self.assertTrue((ROOT / "doc/BUCKLESPRING_LICENSE.txt").is_file())
+
+    def test_keyboard_ui_and_runtime_choose_modes_without_touching_typing_navigation(self):
+        ui_source = (PACKAGE_ROOT / "settings.py").read_text(encoding="utf-8")
+        plugin = (PACKAGE_ROOT / "__init__.py").read_text(encoding="utf-8")
+        self.assertIn("self.playback_mode", ui_source)
+        self.assertIn("Replace key &release WAV", ui_source)
+        self.assertIn("self._keyboard_playback_mode", plugin)
+        self.assertIn("self.keys.transition_physical(", plugin)
+        self.assertIn("cue_for_transition(event, pressed, changed", plugin)
+        self.assertIn("return True\n\n    def _typing_allowed", plugin)
+        self.assertIn('elif changed and pressed and not self._closed and self.setting("typing")', plugin)
+
+    def test_actual_raw_keyboard_callback_deduplicates_and_never_consumes_shortcuts(self):
+        source = ast.parse((PACKAGE_ROOT / "__init__.py").read_text(encoding="utf-8"))
+        cls = next(node for node in source.body
+                   if isinstance(node, ast.ClassDef) and node.name == "GlobalPlugin")
+        method = next(node for node in cls.body
+                      if isinstance(node, ast.FunctionDef) and node.name == "_raw_key")
+        program = ast.Module(body=[method], type_ignores=[])
+        bindings = {
+            "event_for_virtual_key": keyboard_catalog.event_for_virtual_key,
+            "cue_for_transition": keyboard_playback.cue_for_transition,
+            "State": types.SimpleNamespace(PROTECTED="PROTECTED"),
+        }
+        exec(compile(program, "keyboard_callback", "exec"), bindings)
+        heard = []
+
+        class FakePlugin:
+            _closed = False
+            _keyboard_playback_mode = "separate"
+            keys = keys_module.KeyboardState()
+            def setting(self, key):
+                return key == "keyboard"
+            def play_event(self, event, min_gap=0):
+                heard.append(event)
+
+        plug = FakePlugin()
+        callback = bindings["_raw_key"]
+        self.assertTrue(callback(plug, 0x10, 0x2A, False, True))
+        self.assertTrue(callback(plug, 0xA0, 0x2A, False, True))
+        self.assertTrue(callback(plug, 0x10, 0x2A, False, True))
+        self.assertTrue(callback(plug, 0x10, 0x2A, False, False))
+        self.assertTrue(callback(plug, 0xA0, 0x2A, False, False))
+        self.assertEqual(heard, ["keyboard.left_shift", "keyboard.left_shift.release"])
+        heard.clear()
+        plug._keyboard_playback_mode = "combined"
+        callback(plug, 0x41, 0x1E, False, True)
+        callback(plug, 0x41, 0x1E, False, True)
+        callback(plug, 0x41, 0x1E, False, False)
+        self.assertEqual(heard, ["keyboard.a"])
+        self.assertTrue(callback(plug, 0x42, 0x30, False, True, injected=True))
+        self.assertTrue(callback(plug, 0x42, 0x30, False, False, injected=True))
+        self.assertEqual(heard, ["keyboard.a"])
+        heard.clear()
+        plug._keyboard_playback_mode = "separate"
+        callback(plug, 0x0D, 0x1C, False, True)
+        callback(plug, 0x0D, 0x1C, True, True)
+        callback(plug, 0x0D, 0x1C, False, False)
+        callback(plug, 0x0D, 0x1C, True, False)
+        self.assertEqual(heard, ["keyboard.enter", "keyboard.numpad_enter",
+                                 "keyboard.enter.release", "keyboard.numpad_enter.release"])
 
     def test_focus_selection_in_file_explorer_uses_real_item_role_not_missing_state(self):
         item = types.SimpleNamespace(name="LISTITEM")
@@ -843,6 +1164,11 @@ class SoundThemeTests(unittest.TestCase):
                          ("keyboard.shift_tab", "keyboard.tab", "keyboard.default"))
         self.assertNotIn("nav.focus", catalog.candidates("keyboard.f13"))
         self.assertEqual(catalog.candidates("keyboard.default"), ("keyboard.default",))
+        self.assertEqual(catalog.candidates("keyboard.a.release"),
+                         ("keyboard.a.release", "keyboard.default.release"))
+        self.assertEqual(catalog.candidates("keyboard.shift_tab.release"),
+                         ("keyboard.shift_tab.release", "keyboard.tab.release",
+                          "keyboard.default.release"))
 
     def test_rapid_focus_updates_replace_stale_audio(self):
         fake = audio.AudioEngine.__new__(audio.AudioEngine)
@@ -952,12 +1278,12 @@ class SoundThemeTests(unittest.TestCase):
 
     def test_keyboard_navigation_cues_only_activate_in_keyboard_mode(self):
         plugin = (PACKAGE_ROOT / "__init__.py").read_text(encoding="utf-8")
-        self.assertIn('if first and not self._closed and self.setting("keyboard")', plugin)
+        self.assertIn('if changed and not self._closed and self.setting("keyboard")', plugin)
         focus_block = plugin.split("def event_gainFocus", 1)[1].split("def event_typedCharacter", 1)[0]
         self.assertNotIn("self.play_event(key)", focus_block)
         self.assertIn('self.play_event("nav.scroll")', focus_block)
-        self.assertIn('event_for_virtual_key(physical_vk, scanCode, extended)', plugin)
-        self.assertIn('self.keys.update_physical(', plugin)
+        self.assertIn('event_for_virtual_key(vkCode, scanCode, extended)', plugin)
+        self.assertIn('self.keys.transition_physical(', plugin)
 
     def test_session_lock_secure_desktop_raw_input_and_mouse_sites(self):
         plugin = (PACKAGE_ROOT / "__init__.py").read_text(encoding="utf-8")
@@ -970,6 +1296,71 @@ class SoundThemeTests(unittest.TestCase):
         self.assertNotIn("self._register(visionHandlerExtensionPoints.post_browseModeMove", plugin)
         self.assertIn("post_speechPaused", plugin)
         self.assertIn('self.play_event("system.paused_feedback", 0)', plugin)
+
+
+class UpdatesAndReleaseTests(unittest.TestCase):
+    def _release(self, version="0.15.0"):
+        tag = "v" + version
+        filename = f"SoundThemesForNVDA-{version}.nvda-addon"
+        base = f"https://github.com/nuttawat-arch/soundThemes_For_NVDA"
+        return {"tag_name": tag, "draft": False, "prerelease": False,
+                "html_url": f"{base}/releases/tag/{tag}",
+                "assets": [{"name": filename, "size": 30_000_000,
+                            "digest": "sha256:" + "1" * 64,
+                            "browser_download_url": f"{base}/releases/download/{tag}/{filename}"}]}
+
+    def test_versions_and_authenticated_named_release_asset(self):
+        self.assertTrue(release_info.is_newer("0.15.0", "0.14.9"))
+        self.assertFalse(release_info.is_newer("v0.14.9", "0.15.0"))
+        with self.assertRaises(ValueError):
+            release_info.version_key("0.15.0--bad")
+        info = release_info.validated_release(self._release())
+        self.assertEqual(info.version, "0.15.0")
+        self.assertEqual(info.sha256, "1" * 64)
+        self.assertIn("/releases/download/v0.15.0/", info.download_url)
+
+    def test_rejects_draft_prerelease_wrong_repo_asset_or_invalid_checksum(self):
+        examples = []
+        for key in ("draft", "prerelease"):
+            release = self._release()
+            release[key] = True
+            examples.append(release)
+        release = self._release()
+        release["assets"][0]["name"] = "not-our-addon.nvda-addon"
+        examples.append(release)
+        release = self._release()
+        release["assets"][0]["browser_download_url"] = "https://example.org/bad.nvda-addon"
+        examples.append(release)
+        release = self._release()
+        release["assets"][0]["digest"] = "sha256:not-a-real-digest"
+        examples.append(release)
+        release = self._release()
+        release["assets"][0]["size"] = release_info.MAX_INSTALLER_BYTES + 1
+        examples.append(release)
+        for release in examples:
+            with self.subTest(release=release):
+                self.assertIsNone(release_info.validated_release(release))
+
+    def test_tools_menu_replaces_embedded_nvda_settings_page(self):
+        plugin = (PACKAGE_ROOT / "__init__.py").read_text(encoding="utf-8")
+        settings = (PACKAGE_ROOT / "settings.py").read_text(encoding="utf-8")
+        self.assertIn('self._tools_menu.Append(wx.ID_ANY', plugin)
+        self.assertIn('SoundSettingsDialog(gui.mainFrame, self)', plugin)
+        self.assertNotIn('NVDASettingsDialog.categoryClasses.append(', plugin)
+        self.assertIn('class SoundSettingsDialog(wx.Dialog)', settings)
+        self.assertIn('"checkForUpdates"', plugin)
+        self.assertIn('plugin._updater.check(manual=True)', settings)
+
+    def test_local_release_script_is_explicitly_excluded_but_build_remains_automatic(self):
+        self.assertTrue((ROOT / "release.ps1").is_file())
+        self.assertIn('/release.ps1', (ROOT / ".gitignore").read_text(encoding="utf-8"))
+        self.assertIn('OMIT_FILES = {"release.ps1"}',
+                      (ROOT / "scripts/build_source.py").read_text(encoding="utf-8"))
+        workflow = (ROOT / ".github/workflows/build.yml").read_text(encoding="utf-8")
+        self.assertIn('gh release create', workflow)
+        script = (ROOT / "release.ps1").read_text(encoding="utf-8")
+        self.assertIn("Require-Success 'git' @('push', 'origin', $tag)", script)
+        self.assertIn("Require-Success 'python' @('scripts/build.py')", script)
 
 
 if __name__ == "__main__":

@@ -146,6 +146,17 @@ def event_for_virtual_key(vk: int, scan_code: int | None = None, extended: bool 
         return "keyboard.right_alt" if extended else "keyboard.left_alt"
     if vk == 0x0D and extended:
         return "keyboard.numpad_enter"
+    # With Num Lock off, keypad navigation keys share VKs with the standalone
+    # arrow/navigation cluster. The extended bit distinguishes their hardware
+    # positions on standard Windows keyboards.
+    keypad_navigation = {
+        0x2D: "numpad_0", 0x23: "numpad_1", 0x28: "numpad_2",
+        0x22: "numpad_3", 0x25: "numpad_4", 0x0C: "numpad_5",
+        0x27: "numpad_6", 0x24: "numpad_7", 0x26: "numpad_8",
+        0x21: "numpad_9", 0x2E: "decimal",
+    }
+    if not extended and scan_code is not None and vk in keypad_navigation:
+        return "keyboard." + keypad_navigation[vk]
     name = _NAMED.get(vk, (f"vk_{vk:02x}", "", ""))[0]
     return "keyboard." + name
 
