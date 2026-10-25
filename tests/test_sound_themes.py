@@ -1498,7 +1498,7 @@ class UpdatesAndReleaseTests(unittest.TestCase):
         self.assertIn('"locale"', build)
 
     def test_local_release_script_is_explicitly_excluded_but_build_remains_automatic(self):
-        self.assertTrue((ROOT / "release.ps1").is_file())
+        script_path = ROOT / "release.ps1"
         self.assertIn('/release.ps1', (ROOT / ".gitignore").read_text(encoding="utf-8"))
         source_builder = (ROOT / "scripts/build_source.py").read_text(encoding="utf-8")
         self.assertIn('OMIT_FILES = {"release.ps1"}', source_builder)
@@ -1506,9 +1506,11 @@ class UpdatesAndReleaseTests(unittest.TestCase):
         self.assertIn('piece.startswith(".") and piece not in ALLOW_HIDDEN', source_builder)
         workflow = (ROOT / ".github/workflows/build.yml").read_text(encoding="utf-8")
         self.assertIn('gh release create', workflow)
-        script = (ROOT / "release.ps1").read_text(encoding="utf-8")
-        self.assertIn("Require-Success 'git' @('push', 'origin', $tag)", script)
-        self.assertIn("Require-Success 'python' @('scripts/build.py')", script)
+        # This is a private local script: the GitHub Actions checkout must not include it.
+        if script_path.is_file():
+            script = script_path.read_text(encoding="utf-8")
+            self.assertIn("Require-Success 'git' @('push', 'origin', $tag)", script)
+            self.assertIn("Require-Success 'python' @('scripts/build.py')", script)
 
 
 if __name__ == "__main__":
