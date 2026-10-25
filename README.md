@@ -5,8 +5,9 @@ that v0.16.0 was pushed to GitHub. The version released from your PC then
 passed 67 tests, before the later settings and typing-scope fixes. This next
 candidate contains those fixes plus separate bounded queues: key and text
 entry sounds take priority over stale navigation sounds during busy bursts.
-In Tools settings, **Sound playback report...** provides queue depth and
-overload skip counts. No WAV files or original event identifiers changed.
+The settings window now keeps technical audio diagnostics out of the user-facing
+controls, and the theme manager uses a concise **Create** action (Alt+C).
+No WAV files or original event identifiers changed.
 NVDA's own `nvwave` audio engine remains the backend; see
 [DEPENDENCY_POLICY.md](DEPENDENCY_POLICY.md) for why an additional Sound_lib /
 BASS dependency is not yet being shipped. **No v0.17.0 GitHub release exists;
@@ -166,7 +167,7 @@ The original `upload/ScreenReaderSounds.zip` added 54 assignments. The new `uplo
 
 **Eight switch keyboard themes** are now available: Bucklespring, Cherry, DSA, KAT (new-install default), MT3, OEM, SA and XDA. Every recorded key maps from the original scan code to real canonical press/release WAVs; a missing key may use the same pack's fixed genuine fallback of the correct phase (no randomness/mixing). The additional `keyboard/voiceover` theme remains available. Hardware-specific Fn/brightness buttons may not emit Windows keyboard events visible to NVDA. Some legacy ScreenReaderSounds event IDs remain assignable but not wired to dependable runtime triggers.
 
-Explorer item navigation prioritizes the real `role.listitem`/`role.treeviewitem` sample over unavailable `state.selected`. **Up to twelve sounds play concurrently**, through independent reusable NVDA WASAPI players. Long navigation WAVs do not stop or block another navigation or typing sample. Version 0.17 separates a short navigation queue (newest movement wins) from a bounded text/keyboard queue (first-in, first-out) so busy focus changes cannot crowd out all input sounds. Both queues can skip sounds under extreme overload; use **Sound playback report...** in settings to inspect the counts. The existing rule that Keyboard Sounds disables Navigation and Typing remains intact. Test live responsiveness on Windows NVDA before considering it production-verified.
+Explorer item navigation prioritizes the real `role.listitem`/`role.treeviewitem` sample over unavailable `state.selected`. **Up to twelve sounds play concurrently**, through independent reusable NVDA WASAPI players. Long navigation WAVs do not stop or block another navigation or typing sample. Version 0.17 separates a short navigation queue (newest movement wins) from a bounded text/keyboard queue (first-in, first-out) so busy focus changes cannot crowd out all input sounds. Both queues can skip sounds under extreme overload; playback counters remain available internally for developers without adding a technical button to the settings window. The existing rule that Keyboard Sounds disables Navigation and Typing remains intact. Test live responsiveness on Windows NVDA before considering it production-verified.
 
 ## Build, test and install
 

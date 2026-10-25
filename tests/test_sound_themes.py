@@ -1500,8 +1500,10 @@ class UpdatesAndReleaseTests(unittest.TestCase):
     def test_local_release_script_is_explicitly_excluded_but_build_remains_automatic(self):
         self.assertTrue((ROOT / "release.ps1").is_file())
         self.assertIn('/release.ps1', (ROOT / ".gitignore").read_text(encoding="utf-8"))
-        self.assertIn('OMIT_FILES = {"release.ps1"}',
-                      (ROOT / "scripts/build_source.py").read_text(encoding="utf-8"))
+        source_builder = (ROOT / "scripts/build_source.py").read_text(encoding="utf-8")
+        self.assertIn('OMIT_FILES = {"release.ps1"}', source_builder)
+        self.assertIn('ALLOW_HIDDEN = {".github", ".gitignore"}', source_builder)
+        self.assertIn('piece.startswith(".") and piece not in ALLOW_HIDDEN', source_builder)
         workflow = (ROOT / ".github/workflows/build.yml").read_text(encoding="utf-8")
         self.assertIn('gh release create', workflow)
         script = (ROOT / "release.ps1").read_text(encoding="utf-8")

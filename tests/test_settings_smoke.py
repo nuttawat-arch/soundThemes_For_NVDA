@@ -22,6 +22,7 @@ PACKAGE_ROOT = ROOT / "globalPlugins" / "soundThemes"
 class Widget:
     def __init__(self, *args, **kwargs):
         self.selection = -1
+        self.label = kwargs.get("label", args[2] if len(args) > 2 else None)
         self.value = kwargs.get("value", False)
         self.items = list(kwargs.get("choices", ()))
         self.bindings = {}
@@ -205,6 +206,27 @@ class Plugin:
 
 
 class SettingsSmokeTests(unittest.TestCase):
+    def test_settings_ui_has_no_diagnostic_report_and_creation_has_short_label(self):
+        with fake_nvda_gui() as (settings, wx):
+            plugin = Plugin()
+            dialog = settings.SoundSettingsDialog(None, plugin)
+            settings_labels = [item.label for item in dialog.panel.sizer.children
+                               if isinstance(item, wx.Button)]
+            self.assertNotIn("&Sound playback report...", settings_labels)
+            self.assertFalse(any("report" in label.lower() for label in settings_labels))
+            self.assertFalse(hasattr(dialog.panel, "on_audio_report"))
+
+            for store in (plugin.navigation_store, plugin.typing_store,
+                          plugin.keyboard_store):
+                with self.subTest(kind=store.kind):
+                    page = settings.ThemeManagerPage(None, plugin, store, store.kind)
+                    button_grid = next(item for item in page.sizer.children
+                                       if isinstance(item, wx.FlexGridSizer))
+                    buttons = [item.label for item in button_grid.children
+                               if isinstance(item, wx.Button)]
+                    self.assertIn("&Create", buttons)
+                    self.assertNotIn("&Create or copy a theme...", buttons)
+
     def test_settings_window_and_manager_build_without_runtime_exceptions(self):
         with fake_nvda_gui() as (settings, wx):
             plugin = Plugin()

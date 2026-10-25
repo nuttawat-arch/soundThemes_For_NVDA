@@ -3,7 +3,7 @@
 ## v0.17.0 regression review
 
 - Compared archived installer Python sources for 0.13 → 0.14 → 0.15 → 0.16 against the current candidate. From 0.14 onward the playback engine did not change; recent settings/import regressions were not caused by a new audio library. Typing outside text fields came from the previous `onlyEditable=false` policy and the initial 0.16 build did not include the late repair. Event handlers for focus, browsing, typed characters, keypresses, caret and selected items remain present.
-- Retained NVDA's `nvwave.WavePlayer` output device integration. Added dedicated input and navigation playback queues with a limit and a user-facing skip report for real-world investigations. Because a queue can still overload and Windows may not send an event, zero audio omissions are not guaranteed.
+- Retained NVDA's `nvwave.WavePlayer` output device integration. Added dedicated input and navigation playback queues with a limit. Their diagnostic counters remain internal; the technical report button was removed from the user-facing settings. Because a queue can still overload and Windows may not send an event, zero audio omissions are not guaranteed.
 - The attached general-purpose `skills.zip` does not supply an NVDA sound library or a required runtime module. See `DEPENDENCY_POLICY.md` for how to include future third-party modules safely.
 
 ## Post-release-candidate Windows log findings (unpublished)

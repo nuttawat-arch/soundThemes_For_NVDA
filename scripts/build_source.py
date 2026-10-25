@@ -13,6 +13,7 @@ DESTINATION = ROOT.parent / f"SoundThemesForNVDA-source-{VERSION}.zip"
 OMIT_DIRS = {".git", "__pycache__", ".pytest_cache", ".venv", "venv"}
 OMIT_SUFFIXES = {".pyc", ".tmp", ".nvda-addon"}
 OMIT_FILES = {"release.ps1"}  # Private publishing automation, never distributed.
+ALLOW_HIDDEN = {".github", ".gitignore"}  # Keep workflow; exclude stray temp/secret files.
 
 
 def build():
@@ -22,6 +23,7 @@ def build():
                 continue
             rel = path.relative_to(ROOT)
             if (any(piece in OMIT_DIRS for piece in rel.parts)
+                    or any(piece.startswith(".") and piece not in ALLOW_HIDDEN for piece in rel.parts)
                     or path.suffix in OMIT_SUFFIXES or rel.name in OMIT_FILES):
                 continue
             archive.write(path, (Path("soundThemes") / rel).as_posix())

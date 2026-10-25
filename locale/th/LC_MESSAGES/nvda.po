@@ -126,8 +126,8 @@ msgstr "เลเยอร์เดียว: เสียงกดและป�
 msgid "Playback mode for selected keyboard preset"
 msgstr "รูปแบบการเล่นเสียงของชุดคีย์บอร์ดที่เลือก"
 
-msgid "&Create or copy a theme..."
-msgstr "&สร้างหรือคัดลอกชุดเสียง..."
+msgid "&Create"
+msgstr "สร้าง (&C)"
 
 msgid "&Edit sounds..."
 msgstr "&แก้ไขเสียง..."
@@ -369,22 +369,3 @@ msgstr "กำลังดาวน์โหลด Sound Themes รุ่น %s.
 msgid "Could not download or verify the Sound Themes update."
 msgstr "ไม่สามารถดาวน์โหลดหรือตรวจสอบไฟล์อัปเดต Sound Themes ได้"
 
-msgid "&Sound playback report..."
-msgstr "รายงานการเล่นเสียง... (&R)"
-
-msgid "Sound playback report"
-msgstr "รายงานการเล่นเสียง"
-
-#, python-brace-format
-msgid ""
-"Input sounds waiting: {queuedInput}\n"
-"Other sounds waiting: {queuedOther}\n"
-"Input sounds skipped during overload: {skippedInput}\n"
-"Other sounds skipped during overload: {skippedOther}\n\n"
-"These counts are since NVDA started. Rapid focus changes may be skipped intentionally."
-msgstr ""
-"เสียงพิมพ์และคีย์บอร์ดที่รอเล่น: {queuedInput}\n"
-"เสียงอื่นที่รอเล่น: {queuedOther}\n"
-"เสียงพิมพ์และคีย์บอร์ดที่ข้ามเมื่อระบบมีงานหนาแน่น: {skippedInput}\n"
-"เสียงอื่นที่ข้ามเมื่อระบบมีงานหนาแน่น: {skippedOther}\n\n"
-"เป็นจำนวนที่นับตั้งแต่เริ่ม NVDA การเลื่อนโฟกัสอย่างรวดเร็วอาจทำให้ข้ามเสียงบางรายการโดยตั้งใจ"

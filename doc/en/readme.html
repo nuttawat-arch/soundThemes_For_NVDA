@@ -23,13 +23,13 @@
 <li><strong>Keyboard sounds:</strong> physical press/release feedback for individual keys, including modifier and special keys when Windows reports them.</li></ul>
 <p>You can use Navigation and Typing together. Turning on Keyboard Sounds turns both of those off; turning either one back on disables Keyboard Sounds. System sounds, including lock and unlock, have a separate option. The global Enable Sound Themes option switches all effects on or off.</p>
 <p>Navigation effects follow actual NVDA events. Simply pressing an arrow or Tab key does not automatically play a navigation cue when no focus or cursor movement is reported. Not every hardware Fn or media key reaches NVDA.</p>
-<p>Typing and Keyboard Sounds have a separate bounded playback queue. This helps them play during rapid focus changes, but under extreme load some sounds can still be skipped rather than interrupting NVDA. Choose <strong>Sound playback report...</strong> in the Sound Themes settings window to hear how many effects are waiting or were skipped since NVDA started. It does not record your typed characters.</p>
+<p>Typing and Keyboard Sounds have a separate bounded playback queue. This helps them play during rapid focus changes, but under extreme load some sounds can still be skipped rather than interrupting NVDA. The add-on does not record your typed characters.</p>
 
 <h2 id="manager">3. Manage sound themes</h2>
 <ol><li>Open <strong>Manage sound themes...</strong> from the settings window.</li>
 <li>Select the <strong>Navigation</strong>, <strong>Typing</strong> or <strong>Keyboard Sounds</strong> tab with <kbd>Ctrl+Tab</kbd> or the normal notebook navigation keys.</li>
 <li>Move through the available themes using the arrow keys. A sample of the selected theme plays automatically.</li>
-<li>Choose <strong>Use this theme</strong> to activate it, or use the buttons to create/copy, edit, rename, delete, import or export a theme.</li>
+<li>Choose <strong>Use this theme</strong> to activate it. Choose <strong>Create</strong> (Alt+C) to make a new theme based on the selected one, or use the other buttons to edit, rename, delete, import or export themes.</li>
 <li>Press <kbd>Escape</kbd> anywhere in the manager to close it. You do not need to Tab to the Close button.</li></ol>
 <p>All included themes can be customized or removed. Some older third-party themes may use a copy-first format; follow the prompt if it appears. Exporting a theme creates a ZIP file that you can import later.</p>
 
@@ -63,7 +63,7 @@
 <ul><li>If <strong>Tools → Sound Themes settings...</strong> does not open a window, open <strong>NVDA menu → Tools → View log</strong> immediately afterwards. Look for a line beginning <code>Sound Themes: could not open the settings window</code> and send the related traceback to the developer. New builds also show an error message instead of silently failing.</li>
 <li>If you hear two sounds, check whether another keyboard or navigation sound add-on or a Windows accessibility sound is also active.</li>
 <li>If a theme is silent, check Enable Sound Themes, the active theme, volume, and whether the relevant Navigation, Typing or Keyboard mode is on.</li>
-<li>If individual sounds disappear intermittently, open <strong>Sound playback report...</strong> and report its four numbers. Check other sound add-ons and the NVDA audio output device as well.</li>
+<li>If individual sounds disappear intermittently, check other sound add-ons and the NVDA audio output device. If the problem continues, send the NVDA log and a description of when the audio goes missing to the developer.</li>
 <li>A sound assigned to an older event name may not have a current NVDA trigger. Its event description says when this is known.</li>
 <li>Some keys, secure desktop events and browser control notifications depend on Windows, the application and the NVDA version.</li></ul>
 <p>For more information or to report an issue, visit <a href="https://github.com/nuttawat-arch/soundThemes_For_NVDA">the Sound Themes project on GitHub</a>.</p>

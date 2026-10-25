@@ -137,8 +137,6 @@ class SoundSettingsPanel(wx.ScrolledWindow):
         manager.Bind(wx.EVT_BUTTON, self.manage)
         open_folders = self.helper.addItem(wx.Button(self, label=_("&Open sound folders")))
         open_folders.Bind(wx.EVT_BUTTON, self.on_open_folder)
-        audio_report = self.helper.addItem(wx.Button(self, label=_("&Sound playback report...")))
-        audio_report.Bind(wx.EVT_BUTTON, self.on_audio_report)
         self.checkForUpdates = self._check(
             _("Check for Sound Themes &updates when NVDA starts"), "checkForUpdates")
         check_now = self.helper.addItem(wx.Button(self, label=_("Check for &updates now")))
@@ -172,18 +170,6 @@ class SoundSettingsPanel(wx.ScrolledWindow):
             os.startfile(str(directory))
         except (OSError, AttributeError) as error:
             explain_error(self, error)
-
-    def on_audio_report(self, evt):
-        """Show queue pressure without doing disk I/O during keyboard events."""
-        numbers = self.plugin.audio.diagnostics()
-        message = _(
-            "Input sounds waiting: {queuedInput}\n"
-            "Other sounds waiting: {queuedOther}\n"
-            "Input sounds skipped during overload: {skippedInput}\n"
-            "Other sounds skipped during overload: {skippedOther}\n\n"
-            "These counts are since NVDA started. Rapid focus changes may be skipped intentionally."
-        ).format(**numbers)
-        wx.MessageBox(message, _("Sound playback report"), wx.OK | wx.ICON_INFORMATION, self)
 
     def manage(self, evt):
         dialog = ThemeManager(self, self.plugin)
@@ -305,7 +291,7 @@ class ThemeManagerPage(wx.Panel):
             main.Add(self.playback_mode, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
         buttons = wx.FlexGridSizer(cols=2, hgap=5, vgap=5)
         actions = [
-            (_("&Create or copy a theme..."), self.create),
+            (_("&Create"), self.create),
             (_("&Edit sounds..."), self.edit),
             (_("Re&name..."), self.rename),
             (_("&Delete..."), self.delete),
