@@ -1,4 +1,4 @@
-# Sound Themes for NVDA 0.17.5
+# Sound Themes for NVDA 0.17.6
 
 **Unpublished 0.17.0 test candidate:** Your PowerShell transcript confirms
 that v0.16.0 was pushed to GitHub. The version released from your PC then

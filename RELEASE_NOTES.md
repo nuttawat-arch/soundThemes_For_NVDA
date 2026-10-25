@@ -1,17 +1,17 @@
-# Sound Themes for NVDA 0.17.5
+# Sound Themes for NVDA 0.17.6
 
 ## What's new
 
-- When you open **Tools → Sound Themes settings**, keyboard focus now starts at the **Navigation sound theme** combo box instead of the OK button.
-- Added **Apply** alongside OK and Cancel. Apply saves and activates all visible settings without closing the dialog, so you can continue customizing. Cancel discards only changes not yet applied.
-- Simplified the update preferences: enable or disable automatic checking, or check manually. No timer settings are needed. Checks happen after NVDA starts and every 30 minutes in the background while NVDA is running.
-- More reliable preservation of personal sound choices during a normal NVDA add-on update: individually removed stock WAVs and entire removed stock presets remain absent, and personal WAV edits, custom packs and existing NVDA configuration values are not overwritten.
-- Tab and Shift+Tab continue to move through the settings normally. All other improvements from 0.17.4, including Space-to-preview and accessible update notes, remain available.
+- Rewrote all predefined sound Action descriptions in English and Thai, with accurate triggering conditions and practical examples. In the sound editor, select an Action to hear or read its explanation; no Action behavior was changed.
+- Clarified Windows locking: `system.lock` is the first sound, while `system.lockscreen` is a second sound about 180 milliseconds later. Secure-desktop UAC events are separate.
+- Clearly distinguished physical keyboard presses, text typing, navigation-focus sounds, key-release layers, and older compatibility slots that do not have automatic callbacks.
+- Updated the Thai and English manuals and added description-focused regression tests. All sound assignments, WAV recordings, user preferences, sound-preservation behavior, and updater functionality remain unchanged.
+- Automatic update checks stay at their existing unobtrusive schedule. GitHub Webhooks alone cannot push an update directly to NVDA without a separate public relay and client connection.
 
 ## มีอะไรใหม่
 
-- เมื่อเปิด **Tools → Sound Themes settings** โฟกัสจะเริ่มที่ช่อง **Navigation sound theme** ทันที แทนที่จะอยู่ที่ปุ่ม OK
-- เพิ่มปุ่ม **Apply** ให้บันทึกและใช้ค่าทันทีโดยไม่ต้องปิดหน้าต่าง จะตั้งค่าต่อก็ได้ ส่วน Cancel ยกเลิกเฉพาะค่าที่แก้หลังจาก Apply ครั้งล่าสุด
-- หน้าตั้งค่าอัปเดตเรียบง่ายขึ้น เหลือเปิดหรือปิดการตรวจอัตโนมัติและปุ่มตรวจทันที ไม่ต้องเลือกช่วงเวลา ระบบตรวจหลังเริ่ม NVDA และตรวจซ้ำทุก 30 นาทีระหว่างใช้งาน
-- รักษาเสียงส่วนตัวได้รัดกุมขึ้นเมื่ออัปเดตส่วนเสริมผ่าน NVDA: ไฟล์ WAV มาตรฐานที่ลบและชุดเสียงมาตรฐานที่ลบทั้งชุดจะไม่ถูกนำกลับมา พร้อมรักษาไฟล์เสียงที่แก้เอง ชุดที่สร้างเอง และค่าการตั้งค่า NVDA เดิม
-- Tab และ Shift+Tab ยังใช้ตามปกติ และความสามารถจากรุ่น 0.17.4 เช่น Space เพื่อฟังตัวอย่างและหน้าต่างบอกรายการอัปเดตยังคงอยู่ครบ
+- เขียนคำอธิบาย Action ของเสียงทั้งหมดใหม่ทั้งภาษาไทยและอังกฤษ ให้ระบุเงื่อนไขการเล่นจริงและตัวอย่างการใช้งานอย่างชัดเจน เลือก Action ในหน้าแก้ไขเสียงเพื่อฟังหรืออ่านข้อความได้ โดย **ไม่เปลี่ยนวิธีทำงานของ Action**
+- แยกความหมายของการล็อก Windows: `system.lock` เป็นเสียงแรก และ `system.lockscreen` เป็นเสียงที่สองหลังจากนั้นประมาณ 180 มิลลิวินาที ส่วนหน้าจอยืนยัน UAC เป็นอีเวนต์ต่างหาก
+- อธิบายความต่างของเสียงกดคีย์บอร์ดจริง เสียงพิมพ์ข้อความ เสียงเลื่อนโฟกัส เสียงปล่อยปุ่ม และช่องเสียงรุ่นเก่าที่ยังไม่มีตัวเรียกอัตโนมัติ
+- ปรับคู่มือไทยและอังกฤษ พร้อมเพิ่มการทดสอบ โดยยังคงไฟล์เสียง ค่าเสียงที่กำหนด การตั้งค่าผู้ใช้ การรักษาเสียงส่วนตัว และระบบอัปเดตเดิมทั้งหมด
+- ยังใช้ระบบตรวจอัปเดตเบื้องหลังเดิม เพราะ GitHub Webhook อย่างเดียวไม่สามารถแจ้งเตือน NVDA ของผู้ใช้ได้ทันทีโดยไม่มีเซิร์ฟเวอร์รับและส่งต่อ

@@ -731,6 +731,53 @@ class SoundThemeTests(unittest.TestCase):
         self.assertIn("ปุ่ม", catalog.event_description("keyboard.c", "C", "th"))
         self.assertEqual(set(catalog.EVENT_DESCRIPTIONS), set(catalog.TH_EVENT_DESCRIPTIONS))
 
+    def test_every_builtin_action_has_detailed_english_and_thai_usage_guidance(self):
+        """Descriptions are speech/UI content; action IDs and triggers stay unchanged."""
+        predefined = {key for events in catalog.EVENT_GROUPS.values() for key in events}
+        self.assertEqual(predefined, set(catalog.EVENT_DESCRIPTIONS))
+        self.assertEqual(predefined, set(catalog.TH_EVENT_DESCRIPTIONS))
+        for group, event_key, label in catalog.all_events():
+            if event_key.endswith(".default"):
+                continue
+            for lang, minimum in (("en", 105), ("th", 70)):
+                description = catalog.event_description(event_key, label, lang)
+                self.assertGreaterEqual(len(description), minimum,
+                                        (group, event_key, lang))
+                self.assertNotEqual(description, label)
+
+    def test_lock_screen_second_cue_and_secure_desktop_are_explained_separately(self):
+        for language in ("en", "th"):
+            first = catalog.event_description("system.lock", language=language)
+            second = catalog.event_description("system.lockscreen", language=language)
+            secure = catalog.event_description("system.secure_enter", language=language)
+            self.assertIn("180", second)
+            self.assertNotEqual(first, second)
+            self.assertNotEqual(secure, second)
+            self.assertIn("UAC", second)
+
+    def test_descriptions_distinguish_legacy_actions_and_live_callbacks(self):
+        for language in ("en", "th"):
+            for event_key in ("system.app_open", "system.app_close", "system.media",
+                              "system.tutorial", "system.volume_beep", "key.boundary",
+                              "nav.browse", "nav.quick", "nav.long_activate", "key.tab"):
+                guidance = catalog.event_description(event_key, language=language)
+                self.assertGreater(len(guidance), 90, (event_key, language))
+            self.assertNotEqual(
+                catalog.event_description("system.window", language=language),
+                catalog.event_description("object.foreground", language=language),
+            )
+
+    def test_keyboard_release_descriptions_never_promise_a_key_down_sound(self):
+        for language in ("en", "th"):
+            pressed = catalog.event_description("keyboard.a", "A", language)
+            released = catalog.event_description("keyboard.a.release", "A.release", language)
+            fallback = catalog.event_description("keyboard.default.release", language=language)
+            self.assertNotEqual(pressed, released)
+            self.assertGreater(len(released), 80)
+            self.assertGreater(len(fallback), 80)
+            self.assertIn(".release", fallback)
+            self.assertIn("role.*", catalog.event_description("role.default", language=language))
+
     def test_event_description_is_announced_separately_without_changing_search_names(self):
         editor = (PACKAGE_ROOT / "settings.py").read_text(encoding="utf-8")
         self.assertIn("self.events.Set([label for _, label in self.visible])", editor)

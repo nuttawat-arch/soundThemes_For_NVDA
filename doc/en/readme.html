@@ -3,7 +3,7 @@
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Sound Themes for NVDA — User Guide</title></head>
 <body>
 <h1>Sound Themes for NVDA</h1>
-<p>Version 0.17.5. Sound Themes lets you choose, hear and customize sound effects for navigating Windows, typing and using individual keyboard keys. The add-on works without the NVDA Add-on Store.</p>
+<p>Version 0.17.6. Sound Themes lets you choose, hear and customize sound effects for navigating Windows, typing and using individual keyboard keys. The add-on works without the NVDA Add-on Store.</p>
 <nav aria-label="Guide contents"><h2>Contents</h2><ol>
 <li><a href="#start">Open settings</a></li><li><a href="#modes">Choose how sounds play</a></li>
 <li><a href="#manager">Manage sound themes</a></li><li><a href="#editor">Customize individual sounds</a></li>
@@ -39,6 +39,7 @@
 <li>Read the description below the list to learn when the sound plays. You can disable spoken descriptions if you prefer quieter browsing.</li>
 <li>Choose <strong>Choose sound file...</strong> to assign a WAV file, <strong>Preview</strong> to listen, or <strong>Remove assignment</strong> to clear the item. Navigation and Typing also allow multiple sound variations where supported.</li>
 <li>Choose <strong>Done</strong> to keep your edits. If you choose <strong>Cancel</strong> or press <kbd>Escape</kbd> after making changes, a confirmation asks whether to discard them: <strong>No</strong> (the default) returns to editing, while <strong>Yes</strong> discards this session's changes.</li></ol>
+<p><strong>Understanding Action descriptions:</strong> the description distinguishes a real NVDA event from an older sound slot that currently has no automatic callback. In particular, <code>system.lock</code> is the first Windows lock sound, and <code>system.lockscreen</code> is the second cue approximately 180 milliseconds later; neither means an application has blocked the display. Secure-desktop UAC prompts use different events. For normal navigation, sounds follow the focused control's role rather than every physical arrow or Tab press. Open the read-only description field to hear all details without changing the sound assignment.</p>
 <p>The installed sound folders are inside <code>globalPlugins/soundThemes/effects/</code>. The add-on no longer creates a separate sound directory at the root of NVDA user settings.</p>
 
 <h2 id="keyboard">5. Keyboard sounds</h2>
