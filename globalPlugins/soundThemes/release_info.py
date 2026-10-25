@@ -10,7 +10,6 @@ from urllib.parse import quote, urlsplit
 REPOSITORY = "nuttawat-arch/soundThemes_For_NVDA"
 LATEST_RELEASE_URL = f"https://api.github.com/repos/{REPOSITORY}/releases/latest"
 MAX_INSTALLER_BYTES = 150 * 1024 * 1024
-CHECK_INTERVAL_MINUTES = (10, 30, 60, 180, 360, 720, 1440)
 _VERSION = re.compile(r"v?(\d+)\.(\d+)\.(\d+)", re.IGNORECASE)
 
 

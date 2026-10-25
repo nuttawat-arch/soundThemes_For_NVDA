@@ -1,4 +1,4 @@
-# Sound Themes for NVDA 0.17.4
+# Sound Themes for NVDA 0.17.5
 
 **Unpublished 0.17.0 test candidate:** Your PowerShell transcript confirms
 that v0.16.0 was pushed to GitHub. The version released from your PC then
@@ -41,17 +41,20 @@ changes were not included in the initial v0.16.0 release from your PC.
 **New in 0.15.0:** Open the complete Sound Themes settings window directly
 from **NVDA menu → Tools → Sound Themes settings...**. It is no longer buried
 under NVDA Preferences → Settings. The standalone, keyboard-accessible dialog
-has **OK** and **Cancel** buttons and retains all three pack managers, event
+has all three pack managers, event
 editor, volume and enable switches. Configuration values remain in NVDA's
 normal configuration to preserve existing choices; only the **location of the
-user interface** has changed.
+user interface** has changed. **Improved in 0.17.5:** **Apply** saves and
+activates the visible settings without closing the window. **OK** does the
+same and closes it; **Cancel** discards unsaved changes made since the last
+Apply.
 
 GitHub Releases provide **optional update notifications without the NVDA Add-on
 Store**. Automatic checks are enabled initially, begin 15 seconds after NVDA
-starts, and repeat every 30 minutes while NVDA runs (configurable from every
-10 minutes to once daily), without blocking speech, input or audio playback.
-In Tools → Sound Themes settings, choose **Check for updates now**, select an
-automatic check interval, or uncheck **Automatically check for updates**.
+starts, and repeat every 30 minutes while NVDA runs, without blocking speech,
+input or audio playback. There is no update-interval control to configure.
+In Tools → Sound Themes settings, choose **Check for updates now**, or uncheck
+**Automatically check for updates** to disable background checks.
 An available update opens an accessible, read-only **What's new** view using
 the GitHub Release's notes, with **Update now**, **Later**, or **Skip this version**.
 Each released version prompts automatically only once; manual checks remain
@@ -61,7 +64,10 @@ from `nuttawat-arch/soundThemes_For_NVDA` is accepted. When GitHub provides an
 SHA-256 digest, it is checked before installation. During a normal NVDA add-on
 update, `installTasks.py` copies personalized WAVs from the previous installed
 add-on into NVDA's pending installation before the switch. This includes
-modified factory presets and custom packs; an optional ZIP backup is still
+modified factory presets and custom packs. Factory WAVs and whole factory
+presets deliberately deleted by the user are kept deleted when the previous
+installation contains the bundled-stock SHA-256 manifest; the add-on never
+replaces NVDA's existing configuration or chosen sound themes. An optional ZIP backup is still
 recommended in case users uninstall first or manually replace the entire folder.
 While a newer version is still publishing on GitHub, the manual checker now
 explains that no newer installer is ready rather than incorrectly claiming the
@@ -136,7 +142,7 @@ All seven Kliq switch presets now include their original `*-up.wav` samples in a
 
 **New in 0.12: Browse Mode sounds for website controls.** The actual 0.11 audio already contains role recordings for buttons, links, headings, checkboxes, radio buttons and menu items in both Navigation presets. The missing feedback came from event handling: moving NVDA's virtual Browse Mode caret inside a browser often doesn't emit a keyboard `event_gainFocus`. The attempted `visionHandlerExtensionPoints.post_browseModeMove` registration referenced a module instead of a real event instance, and the backup Quick Navigation wrapper accidentally called the caret movement function with the wrong arguments because its saved closure was overwritten. Both problems are fixed. When Browse Mode moves with arrows or single-letter shortcuts (`B` for button, `K` for link, `H` for heading, and other NVDA quick navigation types), the add-on now identifies the new web element and plays **one corresponding role cue**. It prefers a focusable link/button ancestor over a static text leaf; if no semantic role is found it uses the existing caret sound. The reversible hooks do not swallow any keys or require new WAVs. Real browser/Windows timing needs user acceptance testing.
 
-Open NVDA menu → **Tools → Sound Themes settings...** and select the desired active theme packs. **Manage sound themes...** opens Navigation, Typing and Keyboard Sounds pages; each has Create/Copy, Edit, Rename, Delete, Import/Export ZIP and Use This Theme. The old **Import old sounds folder...** button remains removed. **All packs can be renamed, edited and deleted directly**, including presets supplied by the installer. The **Open sound folders** button opens the add-on's own effects directory. The **Edit sounds** dialog lists events alphabetically without category filters; it includes Done to keep edits and Cancel to undo all WAV changes made in that edit session.
+Open NVDA menu → **Tools → Sound Themes settings...**. The window initially focuses the **Navigation sound theme** combo box, the first interactive setting, instead of OK. Select the desired active theme packs. **Manage sound themes...** opens Navigation, Typing and Keyboard Sounds pages; each has Create/Copy, Edit, Rename, Delete, Import/Export ZIP and Use This Theme. The old **Import old sounds folder...** button remains removed. **All packs can be renamed, edited and deleted directly**, including presets supplied by the installer. The **Open sound folders** button opens the add-on's own effects directory. The **Edit sounds** dialog lists events alphabetically without category filters; it includes Done to keep edits and Cancel to undo all WAV changes made in that edit session.
 
 **New in 0.11: Enter, Space and Backspace typing coverage and unrestricted preset removal.** NVDA does not consistently send typed-character events for these keys in every editor. Typing Sounds observes the first physical keydown **only while an editable text field is focused**, using NVDA's raw-key callback, and suppresses a matching later typed-character duplicate. Delete shares the Backspace typing sound. If a typing pack lacks a distinct Enter/Space/Backspace recording, the matching key plays its own genuine general character WAV; it never borrows from another pack. In 0.14 all folders are user-editable within the add-on. Deletion choices are remembered in native NVDA settings even if a later reinstall makes a packaged folder appear on disk again; the sound pack is not forced back into the list. Export WAV ZIP backups before upgrades.
 

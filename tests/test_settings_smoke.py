@@ -14,6 +14,7 @@ import sys
 import threading
 import types
 import unittest
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -31,6 +32,8 @@ class Widget:
 
     def Bind(self, event, callback, **kwargs):
         self.bindings[event] = callback
+        if "id" in kwargs:
+            self.bindings[(event, kwargs["id"])] = callback
 
     def SetName(self, name):
         self.name = name
@@ -114,9 +117,9 @@ def fake_nvda_gui():
     for name in (
         "TAB_TRAVERSAL", "VSCROLL", "VERTICAL", "HORIZONTAL", "ALL", "EXPAND",
         "LEFT", "RIGHT", "TOP", "BOTTOM", "ALIGN_RIGHT", "RESIZE_BORDER",
-        "DEFAULT_DIALOG_STYLE", "OK", "CANCEL", "ID_OK", "ID_CANCEL", "ID_NONE",
+        "DEFAULT_DIALOG_STYLE", "OK", "CANCEL", "APPLY", "ID_OK", "ID_CANCEL", "ID_APPLY", "ID_NONE",
         "EVT_BUTTON", "EVT_CHOICE", "EVT_CHECKBOX", "EVT_LISTBOX",
-        "EVT_CHAR_HOOK", "EVT_CLOSE", "TE_READONLY", "TE_MULTILINE", "LB_SINGLE",
+        "EVT_CHAR_HOOK", "EVT_CLOSE", "EVT_SHOW", "TE_READONLY", "TE_MULTILINE", "LB_SINGLE",
         "NOT_FOUND", "WXK_ESCAPE", "WXK_TAB", "WXK_SPACE",
         "YES", "NO", "YES_NO", "NO_DEFAULT", "ICON_WARNING",
     ):
@@ -127,6 +130,8 @@ def fake_nvda_gui():
     wx.ID_YES = 10
     wx.ID_NO = 11
     wx.ID_CANCEL = 12
+    wx.ID_APPLY = 13
+    wx.APPLY = 4
     wx.ID_NONE = -3
     wx.WXK_ESCAPE = 27
     wx.WXK_TAB = 9
@@ -213,6 +218,73 @@ class Plugin:
 
 
 class SettingsSmokeTests(unittest.TestCase):
+    def test_apply_saves_and_reloads_without_closing_settings(self):
+        with fake_nvda_gui() as (settings, wx):
+            plugin = Plugin()
+            reloaded = []
+            checks_reconfigured = []
+            plugin.reload_sounds = lambda: reloaded.append(True)
+            plugin._updater.configure_auto_checks = lambda: checks_reconfigured.append(True)
+            config = types.ModuleType("config")
+            config.conf = {"soundThemes": {
+                "volume": 65, "enabled": True, "updateCheckIntervalMinutes": 180,
+            }}
+            sys.modules[settings.__package__].SECTION = "soundThemes"
+            with mock.patch.dict(sys.modules, {"config": config}):
+                dialog = settings.SoundSettingsDialog(None, plugin)
+                dialog.panel.volume.SetValue(71)
+                dialog.panel.checkForUpdates.SetValue(True)
+                self.assertTrue(dialog.on_apply(None))
+                self.assertFalse(hasattr(dialog, "modal_result"))
+                self.assertEqual(config.conf["soundThemes"]["volume"], 71)
+                self.assertTrue(config.conf["soundThemes"]["checkForUpdates"])
+                self.assertEqual(config.conf["soundThemes"]["updateCheckIntervalMinutes"], 180)
+                self.assertEqual(len(reloaded), 1)
+                self.assertEqual(len(checks_reconfigured), 1)
+
+                # Edits made after Apply remain unapplied when Cancel closes.
+                dialog.panel.volume.SetValue(99)
+                dialog.EndModal(wx.ID_CANCEL)
+                self.assertEqual(config.conf["soundThemes"]["volume"], 71)
+
+                next_dialog = settings.SoundSettingsDialog(None, plugin)
+                next_dialog.panel.volume.SetValue(76)
+                next_dialog.on_save(None)
+                self.assertEqual(next_dialog.modal_result, wx.ID_OK)
+                self.assertEqual(config.conf["soundThemes"]["volume"], 76)
+                self.assertEqual(len(reloaded), 2)
+
+    def test_failed_apply_does_not_close_settings(self):
+        with fake_nvda_gui() as (settings, wx):
+            dialog = settings.SoundSettingsDialog(None, Plugin())
+            errors = []
+            settings.explain_error = lambda parent, error: errors.append(str(error))
+            dialog.panel.onSave = lambda: (_ for _ in ()).throw(ValueError("invalid sound"))
+            self.assertFalse(dialog.on_apply(None))
+            dialog.on_save(None)
+            self.assertFalse(hasattr(dialog, "modal_result"))
+            self.assertEqual(errors, ["invalid sound", "invalid sound"])
+
+    def test_settings_dialog_focuses_navigation_theme_after_it_opens(self):
+        with fake_nvda_gui() as (settings, wx):
+            scheduled = []
+            wx.CallAfter = lambda callback: scheduled.append(callback)
+            dialog = settings.SoundSettingsDialog(None, Plugin())
+            self.assertEqual(dialog.panel.theme.name, "Navigation sound theme")
+            self.assertFalse(getattr(dialog.panel.theme, "focused", False))
+
+            skipped = []
+            show_event = lambda shown: types.SimpleNamespace(
+                IsShown=lambda: shown, Skip=lambda: skipped.append(True))
+            dialog.bindings[wx.EVT_SHOW](show_event(False))
+            self.assertEqual(scheduled, [], "Hiding must not steal focus")
+            dialog.bindings[wx.EVT_SHOW](show_event(True))
+            self.assertEqual(len(scheduled), 1)
+            self.assertFalse(getattr(dialog.panel.theme, "focused", False))
+            scheduled.pop()()
+            self.assertTrue(dialog.panel.theme.focused)
+            self.assertEqual(skipped, [True, True])
+
     def test_space_replays_selected_theme_or_sound_without_leaving_list(self):
         with fake_nvda_gui() as (settings, wx):
             plugin = Plugin()
@@ -272,9 +344,9 @@ class SettingsSmokeTests(unittest.TestCase):
             wx.CallLater = lambda ms, callback: timers.append(Timer(ms, callback)) or timers[-1]
             scope = {"wx": wx, "_": lambda value: value, "threading": threading,
                      "config": config, "SECTION": "soundThemes", "STARTUP_DELAY_MS": 15000,
+                     "AUTO_CHECK_INTERVAL_MS": 30 * 60000,
                      "_managed_by_store": lambda: False,
-                     "globalVars": types.SimpleNamespace(appArgs=types.SimpleNamespace(secure=False)),
-                     "update_check_interval_ms": lambda n: int(n) * 60000}
+                     "globalVars": types.SimpleNamespace(appArgs=types.SimpleNamespace(secure=False))}
             exec(compile(ast.Module(body=declarations, type_ignores=[]),
                          "<updater-smoke>", "exec"), scope)
             release = types.SimpleNamespace(version="0.17.4", notes="New audio controls\nFaster checks")
@@ -291,8 +363,8 @@ class SettingsSmokeTests(unittest.TestCase):
             updater.check = lambda manual=False: checks.append(manual)
             updater._periodic_tick()
             self.assertEqual(checks, [False])
-            self.assertEqual(timers[-1].ms, 180 * 60000)
-            config.conf["soundThemes"]["updateCheckIntervalMinutes"] = 30
+            self.assertEqual(timers[-1].ms, 30 * 60000)
+            config.conf["soundThemes"]["updateCheckIntervalMinutes"] = 10
             updater._periodic_tick()
             self.assertEqual(timers[-1].ms, 30 * 60000)
             config.conf["soundThemes"]["checkForUpdates"] = False
@@ -315,8 +387,12 @@ class SettingsSmokeTests(unittest.TestCase):
                               and "update" in (item.label or "").lower()]
             self.assertIn("&Automatically check for updates", update_options)
             self.assertIn("Check for &updates now", update_options)
-            self.assertEqual(dialog.panel.updateInterval.GetSelection(), 1)
-            self.assertEqual(len(dialog.panel.updateInterval.items), 7)
+            self.assertFalse(hasattr(dialog.panel, "updateInterval"))
+            self.assertFalse(any("frequency" in str(getattr(item, "label", "")).lower()
+                                 for item in dialog.panel.sizer.children))
+
+            self.assertIn((wx.EVT_BUTTON, wx.ID_APPLY), dialog.bindings)
+            self.assertIn((wx.EVT_BUTTON, wx.ID_OK), dialog.bindings)
 
             for store in (plugin.navigation_store, plugin.typing_store,
                           plugin.keyboard_store):

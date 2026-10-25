@@ -1,25 +1,17 @@
-# Sound Themes for NVDA 0.17.4
+# Sound Themes for NVDA 0.17.5
 
 ## What's new
 
-- Press **Space** while focused on an individual sound name to replay it at once. Space also replays a sample from the focused theme name; no need to move to the Preview button.
-- Personal WAV edits survive a normal NVDA add-on update, **even if you modified a bundled preset directly instead of creating a copy**. Your audio remains inside the installed add-on; no separate active sound folder is created.
-- The first upgrade from older releases conservatively keeps previous WAVs. Subsequent releases can recognize modified WAVs by checking the original bundled file hashes, preserving personal edits while untouched factory sounds receive updates. Custom packs, removed individual WAVs and unused edit backups are also preserved where they can be identified.
-- Sound Themes now checks for new releases periodically while NVDA is running. A restart is not needed just to discover an update.
-- Choose how often automatic checks run: every 10 or 30 minutes, every 1, 3, 6 or 12 hours, or daily. The default is every 30 minutes, and changes take effect when saved.
-- When a new release becomes available, an accessible window shows the release notes in a read-only text field, with **Update now**, **Later** and **Skip this version** choices.
-- A version is announced automatically only once, preventing interruptions at every check. Manual checks still show available releases.
-- Update checks continue to run in the background without blocking typing or sound feedback. No add-on installs without your approval.
-- Improved update status messages and distinct keyboard shortcuts for automatic checking (Alt+A) and checking now (Alt+U).
+- When you open **Tools → Sound Themes settings**, keyboard focus now starts at the **Navigation sound theme** combo box instead of the OK button.
+- Added **Apply** alongside OK and Cancel. Apply saves and activates all visible settings without closing the dialog, so you can continue customizing. Cancel discards only changes not yet applied.
+- Simplified the update preferences: enable or disable automatic checking, or check manually. No timer settings are needed. Checks happen after NVDA starts and every 30 minutes in the background while NVDA is running.
+- More reliable preservation of personal sound choices during a normal NVDA add-on update: individually removed stock WAVs and entire removed stock presets remain absent, and personal WAV edits, custom packs and existing NVDA configuration values are not overwritten.
+- Tab and Shift+Tab continue to move through the settings normally. All other improvements from 0.17.4, including Space-to-preview and accessible update notes, remain available.
 
 ## มีอะไรใหม่
 
-- **กด Space ที่ชื่อเสียงเพื่อฟังทันที** ไม่ต้องเลื่อนไปที่ปุ่มฟังตัวอย่าง และกด Space ที่ชื่อชุดเสียงเพื่อฟังเสียงตัวอย่างซ้ำได้เช่นกัน
-- **อัปเดตแล้วเสียงส่วนตัวไม่หาย:** แม้แก้ไฟล์ WAV ในชุดเสียงมาตรฐานที่ติดตั้งมาโดยตรง โดยไม่ได้สร้างชุดใหม่ ระบบจะนำไฟล์ที่ปรับแต่งไว้ไปยังรุ่นใหม่ระหว่างขั้นตอนติดตั้งของ NVDA และยังเก็บเสียงไว้ในโฟลเดอร์ส่วนเสริม
-- การอัปเดตครั้งแรกจากรุ่นเก่าจะรักษา WAV ที่มีอยู่ทั้งหมดก่อนเพื่อความปลอดภัย ส่วนรุ่นถัดไปจะใช้ค่าตรวจสอบไฟล์ต้นฉบับแยกเสียงที่แก้แล้วออกจากเสียงที่ไม่ได้แก้ ทำให้ไฟล์ส่วนตัวคงเดิมพร้อมรับการปรับปรุงของเสียงมาตรฐานที่ไม่ได้แก้ รวมทั้งเก็บชุดเสียงที่สร้างเองและไฟล์เสียงสำรองภายในชุด
-- ตรวจหารุ่นใหม่เป็นระยะระหว่าง NVDA ทำงานได้ ไม่ต้องเริ่ม NVDA ใหม่เพียงเพื่อให้พบอัปเดต
-- เลือกช่วงเวลาตรวจอัตโนมัติได้ ตั้งแต่ทุก 10 นาทีจนถึงทุก 24 ชั่วโมง โดยเริ่มต้นที่ทุก 30 นาที และมีผลทันทีหลังบันทึก
-- เมื่อมีรุ่นใหม่ จะแสดงหน้าต่างรายการเปลี่ยนแปลงที่อ่านด้วย NVDA ได้ พร้อมตัวเลือก **อัปเดตตอนนี้**, **ไว้ภายหลัง** และ **ข้ามรุ่นนี้**
-- แจ้งอัตโนมัติหนึ่งครั้งต่อรุ่น เพื่อไม่ให้รบกวนซ้ำทุกครั้งที่ตรวจ แต่ยังสั่งตรวจเองได้
-- ตรวจข้อมูลผ่านเธรดเบื้องหลัง ไม่ขัดจังหวะการพิมพ์หรือเล่นเสียง และไม่ติดตั้งโดยพลการ
-- ปรับข้อความสถานะและแยกปุ่มลัด Alt+A สำหรับตรวจอัตโนมัติ กับ Alt+U สำหรับตรวจทันที
+- เมื่อเปิด **Tools → Sound Themes settings** โฟกัสจะเริ่มที่ช่อง **Navigation sound theme** ทันที แทนที่จะอยู่ที่ปุ่ม OK
+- เพิ่มปุ่ม **Apply** ให้บันทึกและใช้ค่าทันทีโดยไม่ต้องปิดหน้าต่าง จะตั้งค่าต่อก็ได้ ส่วน Cancel ยกเลิกเฉพาะค่าที่แก้หลังจาก Apply ครั้งล่าสุด
+- หน้าตั้งค่าอัปเดตเรียบง่ายขึ้น เหลือเปิดหรือปิดการตรวจอัตโนมัติและปุ่มตรวจทันที ไม่ต้องเลือกช่วงเวลา ระบบตรวจหลังเริ่ม NVDA และตรวจซ้ำทุก 30 นาทีระหว่างใช้งาน
+- รักษาเสียงส่วนตัวได้รัดกุมขึ้นเมื่ออัปเดตส่วนเสริมผ่าน NVDA: ไฟล์ WAV มาตรฐานที่ลบและชุดเสียงมาตรฐานที่ลบทั้งชุดจะไม่ถูกนำกลับมา พร้อมรักษาไฟล์เสียงที่แก้เอง ชุดที่สร้างเอง และค่าการตั้งค่า NVDA เดิม
+- Tab และ Shift+Tab ยังใช้ตามปกติ และความสามารถจากรุ่น 0.17.4 เช่น Space เพื่อฟังตัวอย่างและหน้าต่างบอกรายการอัปเดตยังคงอยู่ครบ

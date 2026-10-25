@@ -23,24 +23,19 @@ import ui
 import wx
 from logHandler import log
 
-from .release_info import (CHECK_INTERVAL_MINUTES, LATEST_RELEASE_URL,
-                           MAX_INSTALLER_BYTES, release_state, validated_release)
+from .release_info import (LATEST_RELEASE_URL, MAX_INSTALLER_BYTES,
+                           release_state, validated_release)
 
 addonHandler.initTranslation()
 
 
 TIMEOUT_SECONDS = 20
 STARTUP_DELAY_MS = 15000
+# UnigramPlus checks only on startup/manual request. Keep that simple UI,
+# but also discover new releases while NVDA remains open, without exposing
+# a timing preference: one background check every 30 minutes.
+AUTO_CHECK_INTERVAL_MS = 30 * 60 * 1000
 SECTION = "soundThemes"
-
-
-def update_check_interval_ms(value) -> int:
-    """Coerce imported settings into a safe, API-friendly polling interval."""
-    try:
-        minutes = int(value)
-    except (TypeError, ValueError):
-        minutes = 30
-    return (minutes if minutes in CHECK_INTERVAL_MINUTES else 30) * 60 * 1000
 
 
 def _request(url: str):
@@ -166,8 +161,7 @@ class UpdateChecker:
             self._timer = None
             return
         self.check(manual=False)
-        interval = update_check_interval_ms(config.conf[SECTION]["updateCheckIntervalMinutes"])
-        self._timer = wx.CallLater(interval, self._periodic_tick)
+        self._timer = wx.CallLater(AUTO_CHECK_INTERVAL_MS, self._periodic_tick)
 
     def terminate(self):
         with self._lock:

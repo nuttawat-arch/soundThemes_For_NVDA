@@ -594,8 +594,10 @@ class EmbeddedThemeStore(ThemeStore):
     the top level of NVDA user config. The caller supplies that native NVDA
     configuration section; a dict is enough for unit tests.
 
-    Add-on upgrades replace the installed asset folder, so personal WAV edits
-    must be exported before upgrading. Removed names remain hidden afterward.
+    Add-on upgrades stage a replacement asset folder, but installTasks.py
+    restores personal WAV edits and deletions during normal NVDA updates.
+    The small configuration choices and removed-name markers live outside
+    the installed add-on, so upgrading does not reset them.
     """
 
     embedded = True

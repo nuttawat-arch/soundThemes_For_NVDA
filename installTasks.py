@@ -84,11 +84,13 @@ def preserve_personal_wavs(previous_addon: Path, pending_addon: Path) -> dict[st
     """
     old_root = Path(previous_addon) / EFFECTS
     new_root = Path(pending_addon) / EFFECTS
-    result = {"copied": 0, "kept_new_stock": 0, "deleted": 0}
+    result = {"copied": 0, "kept_new_stock": 0, "deleted": 0, "removed_packs": 0}
     if not old_root.is_dir():
         return result
     if not new_root.is_dir():
         raise FileNotFoundError("The update has no sound folder; refusing to discard existing WAVs")
+    if new_root.is_symlink():
+        raise ValueError("The staged sound folder must not be a symbolic link")
 
     baseline = _original_hashes(Path(previous_addon))
     # Only transfer WAV files from the three actual sound-pack categories.
@@ -117,13 +119,17 @@ def preserve_personal_wavs(previous_addon: Path, pending_addon: Path) -> dict[st
             result["copied"] += 1
 
     # A deleted stock recording is also a user edit. Reapply that removal only
-    # when its original preset folder still exists; deleting a whole preset is
-    # already tracked by NVDA's removed*Presets preferences.
+    # when its original preset folder still exists. A deliberately deleted
+    # whole preset should stay absent, including newly shipped files within
+    # that preset. The NVDA removed*Presets configuration is preserved outside
+    # the add-on as an additional guard against reviving removed preset names.
     if baseline is not None:
+        stock_packs: set[Path] = set()
         for key in baseline:
             rel = _safe_relative(key)
             if rel is None:
                 continue
+            stock_packs.add(Path(rel.parts[0]) / rel.parts[1])
             previous_file = old_root / rel
             previous_pack = old_root / rel.parts[0] / rel.parts[1]
             installed_file = new_root / rel
@@ -132,6 +138,16 @@ def preserve_personal_wavs(previous_addon: Path, pending_addon: Path) -> dict[st
                     installed_file.is_file() and not installed_file.is_symlink()):
                 installed_file.unlink()
                 result["deleted"] += 1
+
+        for pack_rel in sorted(stock_packs):
+            old_pack = old_root / pack_rel
+            new_pack = new_root / pack_rel
+            if (not old_pack.exists() and not old_pack.is_symlink()
+                    and new_pack.is_dir() and not new_pack.is_symlink()):
+                if new_pack.parent.is_symlink():
+                    raise ValueError("Staged preset has a symbolic-link parent")
+                shutil.rmtree(new_pack)
+                result["removed_packs"] += 1
 
     return result
 

@@ -79,7 +79,8 @@ class PreserveUserSoundsTests(unittest.TestCase):
         self.wav(self.new_effects, "navigation/voiceover/role.menu.wav", b"new factory menu")
 
         report = installer.preserve_personal_wavs(self.old, self.new)
-        self.assertEqual(report, {"copied": 2, "kept_new_stock": 1, "deleted": 1})
+        self.assertEqual(report, {"copied": 2, "kept_new_stock": 1, "deleted": 1,
+                                  "removed_packs": 0})
         self.assertEqual((self.new_effects / same).read_bytes(), b"updated factory button")
         self.assertEqual((self.new_effects / changed).read_bytes(), b"my link sound")
         self.assertFalse((self.new_effects / deleted).exists())
@@ -87,6 +88,31 @@ class PreserveUserSoundsTests(unittest.TestCase):
                          b"new factory menu")
         self.assertEqual((self.new_effects / "navigation/voiceover/_unused/removed.wav").read_bytes(),
                          b"my hidden old cue")
+
+    def test_deleted_complete_preset_stays_absent_without_hiding_new_packs(self):
+        removed_pack_file = "navigation/voiceover/role.button.wav"
+        other_pack_file = "navigation/classic/role.button.wav"
+        new_pack_file = "navigation/new-pack/role.button.wav"
+        self.manifest({removed_pack_file: b"original", other_pack_file: b"still here"})
+        # The user removed voiceover entirely but retained classic.
+        self.wav(self.old_effects, other_pack_file, b"still here")
+        self.wav(self.new_effects, removed_pack_file, b"new voiceover factory audio")
+        self.wav(self.new_effects, "navigation/voiceover/role.menu.wav", b"new cue in removed pack")
+        self.wav(self.new_effects, other_pack_file, b"new classic factory audio")
+        self.wav(self.new_effects, new_pack_file, b"new factory pack")
+
+        # NVDA preferences are stored in the user's config, outside the add-on.
+        preferences = self.root / "nvda.ini"
+        preferences.write_text("[soundThemes]\nremovedNavigationPresets=['voiceover']\n"
+                               "volume=37\n", encoding="utf-8")
+        unchanged_preferences = preferences.read_bytes()
+        report = installer.preserve_personal_wavs(self.old, self.new)
+        self.assertEqual(report["removed_packs"], 1)
+        self.assertFalse((self.new_effects / "navigation/voiceover").exists())
+        self.assertEqual((self.new_effects / other_pack_file).read_bytes(),
+                         b"new classic factory audio")
+        self.assertEqual((self.new_effects / new_pack_file).read_bytes(), b"new factory pack")
+        self.assertEqual(preferences.read_bytes(), unchanged_preferences)
 
     def test_on_install_uses_previous_addon_next_to_pending_install(self):
         path = "typing/classic-typewriter/key.enter.wav"

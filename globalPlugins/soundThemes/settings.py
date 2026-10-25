@@ -19,7 +19,6 @@ from .keyboard_catalog import all_keyboard_events, event_for_virtual_key, name_f
 from .keyboard_playback import KEYBOARD_PLAYBACK_MODES
 from .modes import resolve_modes
 from .theme_edit_session import ThemeEditSession
-from .release_info import CHECK_INTERVAL_MINUTES
 
 addonHandler.initTranslation()
 
@@ -147,19 +146,6 @@ class SoundSettingsPanel(wx.ScrolledWindow):
         open_folders.Bind(wx.EVT_BUTTON, self.on_open_folder)
         self.checkForUpdates = self._check(
             _("&Automatically check for updates"), "checkForUpdates")
-        self.checkForUpdates.Bind(wx.EVT_CHECKBOX, self.on_updates_enabled)
-        self.helper.addItem(wx.StaticText(self, label=_("Automatic update check &frequency:")))
-        interval_names = (
-            _("Every 10 minutes"), _("Every 30 minutes"), _("Every hour"),
-            _("Every 3 hours"), _("Every 6 hours"), _("Every 12 hours"),
-            _("Every day"),
-        )
-        self.updateInterval = self.helper.addItem(wx.Choice(self, choices=list(interval_names)))
-        self.updateInterval.SetName(_("Automatic update check interval"))
-        interval = plugin.setting("updateCheckIntervalMinutes")
-        index = CHECK_INTERVAL_MINUTES.index(interval) if interval in CHECK_INTERVAL_MINUTES else 1
-        self.updateInterval.SetSelection(index)
-        self.updateInterval.Enable(self.checkForUpdates.GetValue())
         check_now = self.helper.addItem(wx.Button(self, label=_("Check for &updates now")))
         check_now.Bind(wx.EVT_BUTTON, lambda evt: plugin._updater.check(manual=True))
 
@@ -175,9 +161,6 @@ class SoundSettingsPanel(wx.ScrolledWindow):
 
     def on_mouse(self, evt):
         self.delay.Enable(self.mouse.GetValue())
-
-    def on_updates_enabled(self, evt):
-        self.updateInterval.Enable(self.checkForUpdates.GetValue())
 
     def on_mode_change(self, changed):
         values = resolve_modes(self.navigation.GetValue(), self.typing.GetValue(),
@@ -238,9 +221,6 @@ class SoundSettingsPanel(wx.ScrolledWindow):
             config.conf[SECTION][key] = getattr(self, key).GetValue()
         config.conf[SECTION]["hoverDelay"] = self.delay.GetValue()
         config.conf[SECTION]["volume"] = self.volume.GetValue()
-        interval_index = self.updateInterval.GetSelection()
-        if 0 <= interval_index < len(CHECK_INTERVAL_MINUTES):
-            config.conf[SECTION]["updateCheckIntervalMinutes"] = CHECK_INTERVAL_MINUTES[interval_index]
         self.plugin.reload_sounds()
         self.plugin._updater.configure_auto_checks()
 
@@ -254,20 +234,33 @@ class SoundSettingsDialog(wx.Dialog):
         main = wx.BoxSizer(wx.VERTICAL)
         self.panel = SoundSettingsPanel(self, plugin)
         main.Add(self.panel, 1, wx.ALL | wx.EXPAND, 8)
-        actions = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
+        actions = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL | wx.APPLY)
         if actions is not None:
             main.Add(actions, 0, wx.ALL | wx.EXPAND, 8)
         self.SetSizer(main)
         self.SetEscapeId(wx.ID_CANCEL)
         self.Bind(wx.EVT_BUTTON, self.on_save, id=wx.ID_OK)
+        self.Bind(wx.EVT_BUTTON, self.on_apply, id=wx.ID_APPLY)
+        self.Bind(wx.EVT_SHOW, self.on_show)
 
-    def on_save(self, evt):
+    def on_show(self, evt):
+        evt.Skip()
+        if evt.IsShown():
+            # Defer until the modal window is visible, after wx's automatic
+            # default-button focus. NVDA should start at the first setting.
+            wx.CallAfter(self.panel.theme.SetFocus)
+
+    def on_apply(self, evt):
         try:
             self.panel.onSave()
         except (OSError, ValueError, KeyError) as error:
             explain_error(self, error)
-            return
-        self.EndModal(wx.ID_OK)
+            return False
+        return True
+
+    def on_save(self, evt):
+        if self.on_apply(evt):
+            self.EndModal(wx.ID_OK)
 
 
 class ThemeManager(wx.Dialog):

@@ -1525,6 +1525,8 @@ class UpdatesAndReleaseTests(unittest.TestCase):
         self.assertIn('/tests/SoundThemes-*.zip', ignore)
         self.assertIn('/SoundThemes-preserve-custom-wavs-*.zip', ignore)
         self.assertIn('/SoundThemes-release-space-fix-*.zip', ignore)
+        self.assertIn('/SoundThemes-settings-focus-*.zip', ignore)
+        self.assertIn('/SoundThemes-settings-apply-preserve-*.zip', ignore)
         source_builder = (ROOT / "scripts/build_source.py").read_text(encoding="utf-8")
         self.assertIn('OMIT_FILES = {"release.ps1"}', source_builder)
         self.assertIn('ALLOW_HIDDEN = {".github", ".gitignore"}', source_builder)

@@ -3,7 +3,7 @@
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Sound Themes for NVDA — User Guide</title></head>
 <body>
 <h1>Sound Themes for NVDA</h1>
-<p>Version 0.17.4. Sound Themes lets you choose, hear and customize sound effects for navigating Windows, typing and using individual keyboard keys. The add-on works without the NVDA Add-on Store.</p>
+<p>Version 0.17.5. Sound Themes lets you choose, hear and customize sound effects for navigating Windows, typing and using individual keyboard keys. The add-on works without the NVDA Add-on Store.</p>
 <nav aria-label="Guide contents"><h2>Contents</h2><ol>
 <li><a href="#start">Open settings</a></li><li><a href="#modes">Choose how sounds play</a></li>
 <li><a href="#manager">Manage sound themes</a></li><li><a href="#editor">Customize individual sounds</a></li>
@@ -15,7 +15,7 @@
 <li>Choose <strong>Tools</strong>, then <strong>Sound Themes settings...</strong>.</li>
 <li>Choose the sound themes, enable the options you need and set the volume.</li>
 <li>Choose <strong>OK</strong> to save settings or <strong>Cancel</strong> to leave without saving these options. Press <kbd>Escape</kbd> to cancel the settings window.</li></ol>
-<p>The settings window is separate from NVDA Preferences. You can switch among its controls with <kbd>Tab</kbd> and <kbd>Shift+Tab</kbd>.</p>
+<p>The settings window is separate from NVDA Preferences. When it opens, keyboard focus starts at <strong>Navigation sound theme</strong>, the first setting, instead of OK. You can switch among its controls with <kbd>Tab</kbd> and <kbd>Shift+Tab</kbd>. Use <strong>Apply</strong> to activate and save changes while keeping the dialog open, <strong>OK</strong> to save and close, or <strong>Cancel</strong> to discard changes since the last Apply.</p>
 
 <h2 id="modes">2. Choose how sounds play</h2>
 <ul><li><strong>Navigation sounds:</strong> feedback for focus changes, controls such as buttons and check boxes, lists, selection and browser Browse Mode.</li>
@@ -55,7 +55,7 @@
 <p>You can review and change NVDA shortcuts through NVDA's Input Gestures dialog.</p>
 
 <h2 id="updates">7. Updates and backups</h2>
-<p>In Sound Themes settings, turn on <strong>Automatically check for updates</strong> (Alt+A) and choose an interval: every 10 or 30 minutes, every 1, 3, 6 or 12 hours, or daily. The default is every 30 minutes. Sound Themes checks 15 seconds after NVDA starts and continues checking while NVDA runs, without requiring a restart. You may also choose <strong>Check for updates now</strong> (Alt+U). Changes to these settings take effect when you press OK. GitHub does not send push notifications to the add-on, so detection may take up to the selected interval.</p>
+<p>In Sound Themes settings, turn on <strong>Automatically check for updates</strong> (Alt+A). No time interval needs configuring. Sound Themes checks 15 seconds after NVDA starts and then every 30 minutes while NVDA is running, without requiring a restart. You may also choose <strong>Check for updates now</strong> (Alt+U). Changes to this option take effect when you press Apply or OK. GitHub does not send push notifications to the add-on, so detection may take up to 30 minutes.</p>
 <p>When a newer stable GitHub Release is ready, an accessible window opens automatically with a read-only <strong>What's new</strong> text box showing the developer's release notes. Use <strong>Update now</strong>, <strong>Later</strong> or <strong>Skip this version</strong>. Pressing Escape is the same as Later. You will be notified automatically only once per version; use Check for updates now to open it again. An update is not installed without approval, and NVDA must restart after installation, though detecting updates does not require a restart. A version still being published does not appear as available until its installer is ready.</p>
 <p><strong>Your customized WAVs are now preserved during normal updates through NVDA</strong>, including files you directly modified in a supplied sound theme without making a copy. The installer moves your personalized WAVs into the new version before switching. All active audio stays inside the installed add-on. Future releases can distinguish modified recordings from untouched factory sounds so the latter may receive improvements. The first upgrade from an older version conservatively keeps its existing WAVs. <strong>Exporting a ZIP is optional extra protection</strong>; do it before uninstalling the add-on or manually replacing its whole folder, since those operations cannot use the automatic upgrade transfer.</p>
 

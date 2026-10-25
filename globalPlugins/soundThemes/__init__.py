@@ -62,6 +62,8 @@ config.conf.spec[SECTION] = {
     "keyboardPlaybackModes": "string(default='')",
     "embeddedMigrationMap": "string(default='')",
     "checkForUpdates": "boolean(default=true)",
+    # Retain the old option in existing NVDA profiles without resetting it.
+    # Update checking now uses an internal schedule, independent of this value.
     "updateCheckIntervalMinutes": "integer(default=30)",
     "skippedUpdateVersion": "string(default='')",
     "lastNotifiedUpdateVersion": "string(default='')",
