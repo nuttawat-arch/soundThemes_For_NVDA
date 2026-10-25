@@ -10,6 +10,7 @@ from urllib.parse import quote, urlsplit
 REPOSITORY = "nuttawat-arch/soundThemes_For_NVDA"
 LATEST_RELEASE_URL = f"https://api.github.com/repos/{REPOSITORY}/releases/latest"
 MAX_INSTALLER_BYTES = 150 * 1024 * 1024
+CHECK_INTERVAL_MINUTES = (10, 30, 60, 180, 360, 720, 1440)
 _VERSION = re.compile(r"v?(\d+)\.(\d+)\.(\d+)", re.IGNORECASE)
 
 
@@ -30,6 +31,18 @@ class Release:
     page: str
     download_url: str
     sha256: str | None
+    notes: str = ""
+
+
+def release_state(installed: str, release: Release | None) -> str:
+    """Distinguish installed/current/pending publications for truthful status UI."""
+    if release is None:
+        return "unavailable"
+    if is_newer(release.version, installed):
+        return "update"
+    if is_newer(installed, release.version):
+        return "not_published"
+    return "current"
 
 
 def validated_release(payload: dict) -> Release | None:
@@ -73,5 +86,9 @@ def validated_release(payload: dict) -> Release | None:
         if (page_parts.scheme != "https" or page_parts.netloc.lower() != "github.com"
                 or page_parts.path != f"/{REPOSITORY}/releases/tag/{tag}"):
             page = f"https://github.com/{REPOSITORY}/releases/tag/{tag}"
-        return Release(version, page, url, sha256)
+        body = payload.get("body", "")
+        if not isinstance(body, str):
+            body = ""
+        notes = "".join(char for char in body if char in "\n\t" or ord(char) >= 32).strip()
+        return Release(version, page, url, sha256, notes[:12000])
     return None

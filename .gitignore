@@ -9,3 +9,8 @@ venv/
 .DS_Store
 Thumbs.db
 /release.ps1
+# Local patch archives should never be committed as code/tests.
+/SoundThemes-live-updates-*.zip
+/SoundThemes-preserve-custom-wavs-*.zip
+/SoundThemes-release-space-fix-*.zip
+/tests/SoundThemes-*.zip

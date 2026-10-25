@@ -11,6 +11,7 @@ from contextlib import contextmanager
 import importlib
 from pathlib import Path
 import sys
+import threading
 import types
 import unittest
 
@@ -33,6 +34,9 @@ class Widget:
 
     def SetName(self, name):
         self.name = name
+
+    def SetFocus(self):
+        self.focused = True
 
     def SetValue(self, value):
         self.value = value
@@ -113,17 +117,20 @@ def fake_nvda_gui():
         "DEFAULT_DIALOG_STYLE", "OK", "CANCEL", "ID_OK", "ID_CANCEL", "ID_NONE",
         "EVT_BUTTON", "EVT_CHOICE", "EVT_CHECKBOX", "EVT_LISTBOX",
         "EVT_CHAR_HOOK", "EVT_CLOSE", "TE_READONLY", "TE_MULTILINE", "LB_SINGLE",
-        "NOT_FOUND", "WXK_ESCAPE", "WXK_TAB",
+        "NOT_FOUND", "WXK_ESCAPE", "WXK_TAB", "WXK_SPACE",
         "YES", "NO", "YES_NO", "NO_DEFAULT", "ICON_WARNING",
     ):
         setattr(wx, name, -1 if name == "NOT_FOUND" else 1)
     # Preserve distinctions that matter for modal outcomes and Escape.
     wx.YES = 10
     wx.NO = 11
+    wx.ID_YES = 10
+    wx.ID_NO = 11
     wx.ID_CANCEL = 12
     wx.ID_NONE = -3
     wx.WXK_ESCAPE = 27
     wx.WXK_TAB = 9
+    wx.WXK_SPACE = 32
 
     addon = types.ModuleType("addonHandler")
     addon.initTranslation = lambda: None
@@ -206,6 +213,93 @@ class Plugin:
 
 
 class SettingsSmokeTests(unittest.TestCase):
+    def test_space_replays_selected_theme_or_sound_without_leaving_list(self):
+        with fake_nvda_gui() as (settings, wx):
+            plugin = Plugin()
+            played = []
+            plugin.audio = types.SimpleNamespace(
+                preview_file=lambda path, volume: played.append((str(path), volume)))
+            plugin.navigation_store.sound_for = lambda theme_id, key: ROOT / "sample.wav"
+            original_preview = settings.preview_selected_theme
+            settings.preview_selected_theme = lambda plugin, store, identifier: played.append(identifier)
+            try:
+                manager = settings.ThemeManagerPage(None, plugin, plugin.navigation_store, "navigation")
+                editor = settings.ThemeEditor(None, plugin, plugin.navigation_store, "user:sample")
+                self.assertIn("Space", manager.theme_list.name)
+                self.assertIn("Space", editor.events.name)
+
+                skipped = []
+                def key_event(code, ctrl=False):
+                    return types.SimpleNamespace(
+                        GetKeyCode=lambda: code, ControlDown=lambda: ctrl,
+                        AltDown=lambda: False, ShiftDown=lambda: False,
+                        Skip=lambda: skipped.append(True),
+                    )
+
+                manager.theme_list.bindings[wx.EVT_CHAR_HOOK](key_event(wx.WXK_SPACE))
+                self.assertIn("user:sample", played)
+                self.assertEqual(manager.theme_list.GetSelection(), 0)
+                editor.events.bindings[wx.EVT_CHAR_HOOK](key_event(wx.WXK_SPACE))
+                self.assertIn((str(ROOT / "sample.wav"), 65), played)
+                self.assertEqual(editor.events.GetSelection(), 0)
+
+                before = len(played)
+                manager.on_theme_key(key_event(wx.WXK_SPACE, ctrl=True))
+                editor.on_event_key(key_event(wx.WXK_TAB))
+                self.assertEqual(len(played), before)
+                self.assertEqual(skipped, [True, True])
+            finally:
+                settings.preview_selected_theme = original_preview
+
+    def test_update_changelog_dialog_and_repeating_schedule_without_nvda(self):
+        with fake_nvda_gui() as (settings, wx):
+            module = ast.parse((PACKAGE_ROOT / "updater.py").read_text(encoding="utf-8"))
+            declarations = [node for node in module.body
+                            if isinstance(node, ast.ClassDef) and
+                            node.name in ("ReleaseNotesDialog", "UpdateChecker")]
+            config = types.SimpleNamespace(conf={"soundThemes": {
+                "checkForUpdates": True, "updateCheckIntervalMinutes": 180,
+            }})
+            timers = []
+
+            class Timer:
+                def __init__(self, ms, callback):
+                    self.ms, self.callback, self.stopped = ms, callback, False
+
+                def Stop(self):
+                    self.stopped = True
+
+            wx.CallLater = lambda ms, callback: timers.append(Timer(ms, callback)) or timers[-1]
+            scope = {"wx": wx, "_": lambda value: value, "threading": threading,
+                     "config": config, "SECTION": "soundThemes", "STARTUP_DELAY_MS": 15000,
+                     "_managed_by_store": lambda: False,
+                     "globalVars": types.SimpleNamespace(appArgs=types.SimpleNamespace(secure=False)),
+                     "update_check_interval_ms": lambda n: int(n) * 60000}
+            exec(compile(ast.Module(body=declarations, type_ignores=[]),
+                         "<updater-smoke>", "exec"), scope)
+            release = types.SimpleNamespace(version="0.17.4", notes="New audio controls\nFaster checks")
+            dialog = scope["ReleaseNotesDialog"](None, "0.17.3", release)
+            self.assertEqual(dialog.notes.value, release.notes)
+            self.assertEqual(dialog.escape_id, wx.ID_NO)
+            dialog.on_close(None)
+            self.assertEqual(dialog.modal_result, wx.ID_NO)
+
+            updater = scope["UpdateChecker"]()
+            updater.configure_auto_checks()
+            self.assertEqual(timers[-1].ms, 15000)
+            checks = []
+            updater.check = lambda manual=False: checks.append(manual)
+            updater._periodic_tick()
+            self.assertEqual(checks, [False])
+            self.assertEqual(timers[-1].ms, 180 * 60000)
+            config.conf["soundThemes"]["updateCheckIntervalMinutes"] = 30
+            updater._periodic_tick()
+            self.assertEqual(timers[-1].ms, 30 * 60000)
+            config.conf["soundThemes"]["checkForUpdates"] = False
+            updater.configure_auto_checks()
+            self.assertTrue(timers[-1].stopped)
+            updater.terminate()
+
     def test_settings_ui_has_no_diagnostic_report_and_creation_has_short_label(self):
         with fake_nvda_gui() as (settings, wx):
             plugin = Plugin()
@@ -215,6 +309,14 @@ class SettingsSmokeTests(unittest.TestCase):
             self.assertNotIn("&Sound playback report...", settings_labels)
             self.assertFalse(any("report" in label.lower() for label in settings_labels))
             self.assertFalse(hasattr(dialog.panel, "on_audio_report"))
+
+            update_options = [item.label for item in dialog.panel.sizer.children
+                              if isinstance(item, (wx.Button, wx.CheckBox))
+                              and "update" in (item.label or "").lower()]
+            self.assertIn("&Automatically check for updates", update_options)
+            self.assertIn("Check for &updates now", update_options)
+            self.assertEqual(dialog.panel.updateInterval.GetSelection(), 1)
+            self.assertEqual(len(dialog.panel.updateInterval.items), 7)
 
             for store in (plugin.navigation_store, plugin.typing_store,
                           plugin.keyboard_store):

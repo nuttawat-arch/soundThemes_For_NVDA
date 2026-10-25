@@ -1,4 +1,4 @@
-# Sound provenance and merger status — v0.17.0 (2026-10-24)
+# Sound provenance and merger status - v0.17.4 (2026-10-24)
 
 Version 0.17.0 improves sound-queue dispatch and adds a playback report. All previous 1,398 imported original WAV files and their mappings remain intact. Version 0.16.0 changed user-interface wording, keyboard focus navigation and localization.
 

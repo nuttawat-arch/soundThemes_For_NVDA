@@ -19,6 +19,7 @@ from .keyboard_catalog import all_keyboard_events, event_for_virtual_key, name_f
 from .keyboard_playback import KEYBOARD_PLAYBACK_MODES
 from .modes import resolve_modes
 from .theme_edit_session import ThemeEditSession
+from .release_info import CHECK_INTERVAL_MINUTES
 
 addonHandler.initTranslation()
 
@@ -50,6 +51,13 @@ def preview_selected_theme(plugin, store, identifier):
     except (ValueError, OSError, KeyError):
         # An empty/unreadable theme should not interrupt keyboard navigation.
         pass
+
+
+def _is_plain_space(event) -> bool:
+    """Reserve Space for auditioning only when a theme or sound list has focus."""
+    return (event.GetKeyCode() == wx.WXK_SPACE and
+            not event.ControlDown() and not event.AltDown() and
+            not event.ShiftDown())
 
 
 def short_event_label(key: str) -> str:
@@ -138,7 +146,20 @@ class SoundSettingsPanel(wx.ScrolledWindow):
         open_folders = self.helper.addItem(wx.Button(self, label=_("&Open sound folders")))
         open_folders.Bind(wx.EVT_BUTTON, self.on_open_folder)
         self.checkForUpdates = self._check(
-            _("Check for Sound Themes &updates when NVDA starts"), "checkForUpdates")
+            _("&Automatically check for updates"), "checkForUpdates")
+        self.checkForUpdates.Bind(wx.EVT_CHECKBOX, self.on_updates_enabled)
+        self.helper.addItem(wx.StaticText(self, label=_("Automatic update check &frequency:")))
+        interval_names = (
+            _("Every 10 minutes"), _("Every 30 minutes"), _("Every hour"),
+            _("Every 3 hours"), _("Every 6 hours"), _("Every 12 hours"),
+            _("Every day"),
+        )
+        self.updateInterval = self.helper.addItem(wx.Choice(self, choices=list(interval_names)))
+        self.updateInterval.SetName(_("Automatic update check interval"))
+        interval = plugin.setting("updateCheckIntervalMinutes")
+        index = CHECK_INTERVAL_MINUTES.index(interval) if interval in CHECK_INTERVAL_MINUTES else 1
+        self.updateInterval.SetSelection(index)
+        self.updateInterval.Enable(self.checkForUpdates.GetValue())
         check_now = self.helper.addItem(wx.Button(self, label=_("Check for &updates now")))
         check_now.Bind(wx.EVT_BUTTON, lambda evt: plugin._updater.check(manual=True))
 
@@ -154,6 +175,9 @@ class SoundSettingsPanel(wx.ScrolledWindow):
 
     def on_mouse(self, evt):
         self.delay.Enable(self.mouse.GetValue())
+
+    def on_updates_enabled(self, evt):
+        self.updateInterval.Enable(self.checkForUpdates.GetValue())
 
     def on_mode_change(self, changed):
         values = resolve_modes(self.navigation.GetValue(), self.typing.GetValue(),
@@ -214,7 +238,11 @@ class SoundSettingsPanel(wx.ScrolledWindow):
             config.conf[SECTION][key] = getattr(self, key).GetValue()
         config.conf[SECTION]["hoverDelay"] = self.delay.GetValue()
         config.conf[SECTION]["volume"] = self.volume.GetValue()
+        interval_index = self.updateInterval.GetSelection()
+        if 0 <= interval_index < len(CHECK_INTERVAL_MINUTES):
+            config.conf[SECTION]["updateCheckIntervalMinutes"] = CHECK_INTERVAL_MINUTES[interval_index]
         self.plugin.reload_sounds()
+        self.plugin._updater.configure_auto_checks()
 
 
 class SoundSettingsDialog(wx.Dialog):
@@ -276,8 +304,9 @@ class ThemeManagerPage(wx.Panel):
             "Available sound themes:")),
                  0, wx.ALL, 8)
         self.theme_list = wx.ListBox(self, style=wx.LB_SINGLE)
-        self.theme_list.SetName(_("Available sound themes"))
+        self.theme_list.SetName(_("Available sound themes (Space to preview)"))
         self.theme_list.Bind(wx.EVT_LISTBOX, self.on_theme_selection)
+        self.theme_list.Bind(wx.EVT_CHAR_HOOK, self.on_theme_key)
         main.Add(self.theme_list, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
         if kind == "keyboard":
             main.Add(wx.StaticText(self, label=_("&How the keyboard sound plays:")),
@@ -350,6 +379,12 @@ class ThemeManagerPage(wx.Panel):
         index = self.theme_list.GetSelection()
         if 0 <= index < len(self.choices):
             preview_selected_theme(self.plugin, self.store, self.choices[index][0])
+
+    def on_theme_key(self, evt):
+        if _is_plain_space(evt):
+            self.on_theme_selection(None)
+        else:
+            evt.Skip()
 
     def selected(self):
         index = self.theme_list.GetSelection()
@@ -503,7 +538,7 @@ class ThemeEditor(wx.Dialog):
         main = wx.BoxSizer(wx.VERTICAL)
         main.Add(wx.StaticText(self, label=_("Choose a &sound to customize:")), 0, wx.ALL, 8)
         self.events = wx.ListBox(self)
-        self.events.SetName(_("Sound events"))
+        self.events.SetName(_("Sound events (Space to preview)"))
         self.events.Set([label for _, label in self.visible])
         main.Add(self.events, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
         main.Add(wx.StaticText(self, label=_("When this sound is played:")),
@@ -559,6 +594,7 @@ class ThemeEditor(wx.Dialog):
         main.Add(finish, 0, wx.ALL | wx.ALIGN_RIGHT, 8)
         self.SetSizer(main)
         self.events.Bind(wx.EVT_LISTBOX, self.on_select)
+        self.events.Bind(wx.EVT_CHAR_HOOK, self.on_event_key)
         if self.visible:
             self.events.SetSelection(0)
         self.on_select(None)
@@ -569,6 +605,14 @@ class ThemeEditor(wx.Dialog):
     def on_escape(self, event):
         if event.GetKeyCode() == wx.WXK_ESCAPE:
             self.on_cancel(event)
+        else:
+            event.Skip()
+
+    def on_event_key(self, event):
+        # The sound list has its own Space shortcut. Do not steal Space from
+        # the event editor's action buttons, text controls or key-capture field.
+        if _is_plain_space(event):
+            self.preview(None)
         else:
             event.Skip()
 

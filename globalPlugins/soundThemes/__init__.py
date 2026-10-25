@@ -29,7 +29,7 @@ from .keyboard_state import KeyboardState
 from .keyboard_catalog import event_for_virtual_key
 from .keyboard_playback import cue_for_transition
 from .modes import resolve_modes
-from .updater import STARTUP_DELAY_MS, UpdateChecker
+from .updater import UpdateChecker
 
 addonHandler.initTranslation()
 
@@ -62,7 +62,9 @@ config.conf.spec[SECTION] = {
     "keyboardPlaybackModes": "string(default='')",
     "embeddedMigrationMap": "string(default='')",
     "checkForUpdates": "boolean(default=true)",
+    "updateCheckIntervalMinutes": "integer(default=30)",
     "skippedUpdateVersion": "string(default='')",
+    "lastNotifiedUpdateVersion": "string(default='')",
 }
 
 
@@ -98,7 +100,6 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         self._tools_item = None
         self._tools_menu = None
         self._settings_open = False
-        self._update_timer = None
         self._updater = UpdateChecker()
         self._browse_monitor = BrowseMonitor(self)
         self.keys = KeyboardState()
@@ -173,8 +174,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             self._register(postNvdaStartup, self._startup)
         except (ImportError, AttributeError):
             pass
-        if self.setting("checkForUpdates"):
-            self._update_timer = wx.CallLater(STARTUP_DELAY_MS, self._updater.check, False)
+        self._updater.configure_auto_checks()
 
     def _install_tools_menu(self):
         """One direct Tools entry; no nested NVDA Settings category."""
@@ -727,8 +727,6 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         self.play_event("system.stop", 0)
         self._closed = True
         self._updater.terminate()
-        if self._update_timer is not None:
-            self._update_timer.Stop()
         if self._tools_item is not None and self._tools_menu is not None:
             try:
                 tray = gui.mainFrame.sysTrayIcon

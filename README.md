@@ -1,4 +1,4 @@
-# Sound Themes for NVDA 0.17.0
+# Sound Themes for NVDA 0.17.4
 
 **Unpublished 0.17.0 test candidate:** Your PowerShell transcript confirms
 that v0.16.0 was pushed to GitHub. The version released from your PC then
@@ -48,19 +48,35 @@ user interface** has changed.
 
 GitHub Releases provide **optional update notifications without the NVDA Add-on
 Store**. Automatic checks are enabled initially, begin 15 seconds after NVDA
-starts, and perform HTTP/network and file I/O in a background thread. In Tools
-→ Sound Themes settings, choose **Check for updates now** or uncheck **Check for
-updates when NVDA starts**. An available update offers **Update now**, **Later**,
-or **Skip this version**. The installer still asks for user confirmation and
+starts, and repeat every 30 minutes while NVDA runs (configurable from every
+10 minutes to once daily), without blocking speech, input or audio playback.
+In Tools → Sound Themes settings, choose **Check for updates now**, select an
+automatic check interval, or uncheck **Automatically check for updates**.
+An available update opens an accessible, read-only **What's new** view using
+the GitHub Release's notes, with **Update now**, **Later**, or **Skip this version**.
+Each released version prompts automatically only once; manual checks remain
+available. The installer still asks for user confirmation and
 NVDA restart. Only a stable release containing the correctly named add-on
 from `nuttawat-arch/soundThemes_For_NVDA` is accepted. When GitHub provides an
-SHA-256 digest, it is checked before installation. Installing an updated add-on
-can replace custom WAVs inside it; **export edited presets as ZIPs first**.
+SHA-256 digest, it is checked before installation. During a normal NVDA add-on
+update, `installTasks.py` copies personalized WAVs from the previous installed
+add-on into NVDA's pending installation before the switch. This includes
+modified factory presets and custom packs; an optional ZIP backup is still
+recommended in case users uninstall first or manually replace the entire folder.
+While a newer version is still publishing on GitHub, the manual checker now
+explains that no newer installer is ready rather than incorrectly claiming the
+locally installed version is the latest published one. The automatic startup
+check remains silent unless it finds a newer installable release.
+Human-written release details in `RELEASE_NOTES.md` are published for a matching
+version by GitHub Actions; otherwise GitHub generates notes from the commits.
 
 The private developer script **`release.ps1`** runs tests, updates the version,
 builds/validates both archives, commits and pushes `main` plus its `vX.Y.Z`
 tag. GitHub Actions then builds and publishes a Release automatically. The
-script is deliberately **excluded from Git and from both distributable ZIPs**;
+script now waits for GitHub Actions and confirms that the correct installer is
+available in GitHub's **latest** Release before it reports success; failed
+workflows and publication timeouts produce errors. The script is deliberately
+**excluded from Git and from both distributable ZIPs**;
 keep your own local copy at the repository root. It does not submit anything
 to the NVDA Add-on Store. The iPhone Keyboard and VoiceOver typing presets
 have also been compared: despite similar audible character, their source WAVs
@@ -134,6 +150,8 @@ Open NVDA menu → **Tools → Sound Themes settings...** and select the desired
 
 Theme list items are named simply `Cherry`, `DSA`, `KAT`, etc., **not** `Built-in: Cherry` or `Custom: Cherry`: type `C` in the list to find Cherry. The event list also omits redundant `Role:` / `State:` prefixes and assignment suffixes; key labels `A`–`Z` and `0`–`9` begin directly with those characters for first-letter lookup. Categories are still available in their separate category control. The selected theme's source and internal identifier are retained for operations without being added to the audible list name.
 
+**Space previews sound-list selections immediately.** While focus is on a sound-event name in the editor, press Space to play that event again without Tab-navigation to the Preview button. While focus is on a theme name in the theme manager, Space replays the representative sound for that pack. Ordinary Space elsewhere, Escape, Tab, and Ctrl/Alt/Shift+Space remain unaffected.
+
 In the keyboard editor, navigate to **Capture and preview a physical key**. Press a physical key to select its event and preview the assigned WAV. **Tab moves to the next control; Escape cancels the editor.** To edit the Tab key itself, select it from the sound list. Choose **Choose sound file** for a press/combined sample and **Choose key release sound** for a separate release sample. The editor saves them as `keyboard.a.wav` and `keyboard.a__release.wav`, regardless of source filenames. There is no random-variation button for keyboard packs. Real Kliq fallback recordings serve missing keys within the same pack, with separate press/release defaults; custom packs without fallbacks remain silent.
 
 Read [KEYBOARD_SOUNDS_GUIDE.md](KEYBOARD_SOUNDS_GUIDE.md) for full details, examples, and verified download links.
@@ -159,7 +177,7 @@ globalPlugins/soundThemes/effects/
 # Keyboard mode and removed-name preferences use NVDA's existing settings.
 ```
 
-The executable Python files and all WAV assets live under **one `globalPlugins/soundThemes/` directory inside the installed add-on**. This deliberately stops creating the old `NVDA user-config/soundThemes/effects/` folder. Sound packs need only `.wav` files, no JSON theme manifest. Because add-on reinstalls replace the contents of the installed folder, **export any modified packs before installing a newer version**.
+The executable Python files and all WAV assets live under **one `globalPlugins/soundThemes/` directory inside the installed add-on**. This deliberately stops creating the old `NVDA user-config/soundThemes/effects/` folder. Sound packs need only `.wav` files, no JSON theme manifest. **Normal NVDA add-on updates now preserve custom WAVs in place**, even if the user edited a supplied pack directly. The installer first stages the new version and invokes `installTasks.py`, which merges old personal WAVs into that pending folder; it never modifies the running old installation. Starting with the first protected release, the package also includes `soundthemes-stock-wavs.json`, containing hashes of stock WAVs at build time. A later update can retain modified files while accepting changes to untouched stock sounds. When updating from a version with no hash manifest, all old WAVs are preserved as a conservative one-time fallback. The checksums are internal install metadata, not an editable theme manifest. **Export a ZIP as an optional additional backup before uninstalling or replacing folders manually.**
 
 ## Source audio and compatibility
 
@@ -200,7 +218,7 @@ to check the intended version without changing files or contacting GitHub.
 The script requires Python, Git and normal GitHub authentication already set
 up, refuses the wrong repository/branch and existing tags, and aborts on tests
 or build errors. The tag triggers the included GitHub Actions release workflow.
-**Review and export your custom audio before running an update.**
+**Normal NVDA add-on updates preserve custom WAVs. Export to ZIP as an optional extra backup; manual uninstall or folder replacement is not covered.**
 
 ### Manual release (alternative)
 

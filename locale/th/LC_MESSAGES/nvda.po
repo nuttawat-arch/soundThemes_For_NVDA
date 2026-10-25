@@ -84,8 +84,35 @@ msgstr "&จัดการชุดเสียง..."
 msgid "&Open sound folders"
 msgstr "&เปิดโฟลเดอร์ชุดเสียง"
 
-msgid "Check for Sound Themes &updates when NVDA starts"
-msgstr "ตรวจหา&อัปเดต Sound Themes เมื่อเปิด NVDA"
+msgid "&Automatically check for updates"
+msgstr "ตรวจหาอัปเดตอัตโนมัติ (&A)"
+
+msgid "Automatic update check &frequency:"
+msgstr "ความถี่ของการตรวจอัปเดตอัตโนมัติ (&F):"
+
+msgid "Every 10 minutes"
+msgstr "ทุก 10 นาที"
+
+msgid "Every 30 minutes"
+msgstr "ทุก 30 นาที"
+
+msgid "Every hour"
+msgstr "ทุก 1 ชั่วโมง"
+
+msgid "Every 3 hours"
+msgstr "ทุก 3 ชั่วโมง"
+
+msgid "Every 6 hours"
+msgstr "ทุก 6 ชั่วโมง"
+
+msgid "Every 12 hours"
+msgstr "ทุก 12 ชั่วโมง"
+
+msgid "Every day"
+msgstr "ทุก 24 ชั่วโมง"
+
+msgid "Automatic update check interval"
+msgstr "ช่วงเวลาตรวจหาอัปเดตอัตโนมัติ"
 
 msgid "Check for &updates now"
 msgstr "ตรวจหา&อัปเดตตอนนี้"
@@ -113,6 +140,9 @@ msgstr "ชุดเสียงที่มี:"
 
 msgid "Available sound themes"
 msgstr "รายการชุดเสียง"
+
+msgid "Available sound themes (Space to preview)"
+msgstr "รายการชุดเสียง (กด Space เพื่อฟังตัวอย่าง)"
 
 msgid "&How the keyboard sound plays:"
 msgstr "&รูปแบบการเล่นเสียงคีย์บอร์ด:"
@@ -205,6 +235,9 @@ msgstr "เลือก&เสียงที่ต้องการแก้�
 
 msgid "Sound events"
 msgstr "รายการเสียง"
+
+msgid "Sound events (Space to preview)"
+msgstr "รายการเสียง (กด Space เพื่อฟังตัวอย่าง)"
 
 msgid "When this sound is played:"
 msgstr "เสียงนี้เล่นเมื่อใด:"
@@ -346,12 +379,36 @@ msgstr "ไม่สามารถตรวจหาอัปเดต Sound Th
 msgid "Sound Themes %s is up to date."
 msgstr "Sound Themes รุ่น %s เป็นรุ่นล่าสุดแล้ว"
 
+msgid "No Sound Themes update is ready to download yet. Please try again later."
+msgstr "ยังไม่มีอัปเดต Sound Themes ที่พร้อมดาวน์โหลด โปรดลองตรวจอีกครั้งภายหลัง"
+
+#, python-format
+msgid "Sound Themes %s is installed, but the latest downloadable release is %s. A newer update may still be publishing. Please check again shortly."
+msgstr "ติดตั้ง Sound Themes รุ่น %s อยู่ แต่รุ่นล่าสุดที่ดาวน์โหลดได้คือ %s อัปเดตใหม่อาจยังอยู่ระหว่างเผยแพร่ โปรดลองตรวจอีกครั้งในอีกสักครู่"
+
 #, python-brace-format
 msgid "Sound Themes {new} is available (installed: {old}).\n\nExport any customized sound packs to ZIP before updating: installing a new add-on can overwrite WAV edits stored inside it.\n\nDownload and install it using NVDA's installer? NVDA will ask for confirmation and a restart."
 msgstr "มี Sound Themes รุ่น {new} (ติดตั้งอยู่: {old})\n\nโปรดส่งออกชุดเสียงที่แก้ไขเป็น ZIP ก่อนอัปเดต เพราะการติดตั้งส่วนเสริมใหม่อาจแทนที่ไฟล์เสียงที่ปรับแต่ง\n\nต้องการดาวน์โหลดและติดตั้งหรือไม่ NVDA จะขอคำยืนยันและให้เริ่มโปรแกรมใหม่"
 
 msgid "Sound Themes update"
 msgstr "อัปเดต Sound Themes"
+
+#, python-brace-format
+msgid "Sound Themes {new} is available (installed: {old})."
+msgstr "มี Sound Themes รุ่น {new} (ติดตั้งอยู่: {old})"
+
+msgid "What's new in this version:"
+msgstr "มีอะไรใหม่ในรุ่นนี้:"
+
+msgid "No release notes were provided for this version."
+msgstr "ผู้พัฒนายังไม่ได้ระบุรายละเอียดการเปลี่ยนแปลงของรุ่นนี้"
+
+#, python-format
+msgid "What's new in Sound Themes %s"
+msgstr "มีอะไรใหม่ใน Sound Themes รุ่น %s"
+
+msgid "Your customized WAV sounds will be preserved during a normal NVDA add-on update. Export a ZIP backup if you want an extra copy. NVDA will ask before installation."
+msgstr "เสียง WAV ที่ปรับแต่งเองจะถูกเก็บไว้ระหว่างอัปเดตส่วนเสริมผ่าน NVDA ตามปกติ หากต้องการสำเนาสำรองเพิ่มเติมสามารถส่งออกเป็น ZIP ได้ NVDA จะขอยืนยันก่อนติดตั้ง"
 
 msgid "&Update now"
 msgstr "&อัปเดตตอนนี้"

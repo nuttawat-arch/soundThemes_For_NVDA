@@ -26,6 +26,12 @@ def build():
                     or any(piece.startswith(".") and piece not in ALLOW_HIDDEN for piece in rel.parts)
                     or path.suffix in OMIT_SUFFIXES or rel.name in OMIT_FILES):
                 continue
+            # A user once accidentally checked an update-patch ZIP into tests/.
+            # It is not source code and must never be recursively re-packaged.
+            if (rel.parts[0] == "tests" and path.suffix.lower() == ".zip"):
+                continue
+            if len(rel.parts) == 1 and rel.name.startswith("SoundThemes-") and path.suffix.lower() == ".zip":
+                continue
             archive.write(path, (Path("soundThemes") / rel).as_posix())
     print(f"Created {DESTINATION} ({DESTINATION.stat().st_size} bytes)")
 

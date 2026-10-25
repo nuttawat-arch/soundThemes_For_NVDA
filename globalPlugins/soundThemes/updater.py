@@ -18,11 +18,13 @@ from urllib.parse import urlsplit
 import addonHandler
 import config
 import gui
+import globalVars
 import ui
 import wx
 from logHandler import log
 
-from .release_info import LATEST_RELEASE_URL, MAX_INSTALLER_BYTES, is_newer, validated_release
+from .release_info import (CHECK_INTERVAL_MINUTES, LATEST_RELEASE_URL,
+                           MAX_INSTALLER_BYTES, release_state, validated_release)
 
 addonHandler.initTranslation()
 
@@ -32,10 +34,21 @@ STARTUP_DELAY_MS = 15000
 SECTION = "soundThemes"
 
 
+def update_check_interval_ms(value) -> int:
+    """Coerce imported settings into a safe, API-friendly polling interval."""
+    try:
+        minutes = int(value)
+    except (TypeError, ValueError):
+        minutes = 30
+    return (minutes if minutes in CHECK_INTERVAL_MINUTES else 30) * 60 * 1000
+
+
 def _request(url: str):
     return urllib.request.Request(url, headers={
         "User-Agent": "SoundThemesForNVDA-update-checker",
         "Accept": "application/vnd.github+json",
+        "Cache-Control": "no-cache",
+        "Pragma": "no-cache",
     })
 
 
@@ -88,15 +101,80 @@ def _download_installer(release) -> str:
         raise
 
 
+class ReleaseNotesDialog(wx.Dialog):
+    """Accessible read-only change log with explicit update/delay/skip choices."""
+
+    def __init__(self, parent, installed, release):
+        super().__init__(parent, title=_("Sound Themes update"), size=(720, 560),
+                         style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+        main = wx.BoxSizer(wx.VERTICAL)
+        headline = _(
+            "Sound Themes {new} is available (installed: {old})."
+        ).format(new=release.version, old=installed)
+        main.Add(wx.StaticText(self, label=headline), 0, wx.ALL | wx.EXPAND, 10)
+        main.Add(wx.StaticText(self, label=_("What's new in this version:")),
+                 0, wx.LEFT | wx.RIGHT, 10)
+        notes = release.notes or _("No release notes were provided for this version.")
+        self.notes = wx.TextCtrl(self, value=notes,
+                                 style=wx.TE_MULTILINE | wx.TE_READONLY)
+        self.notes.SetName(_("What's new in Sound Themes %s") % release.version)
+        main.Add(self.notes, 1, wx.EXPAND | wx.ALL, 10)
+        main.Add(wx.StaticText(self, label=_(
+            "Your customized WAV sounds will be preserved during a normal NVDA "
+            "add-on update. Export a ZIP backup if you want an extra copy. "
+            "NVDA will ask before installation."
+        )), 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
+        actions = wx.BoxSizer(wx.HORIZONTAL)
+        for identifier, label in (
+            (wx.ID_YES, _("&Update now")),
+            (wx.ID_NO, _("&Later")),
+            (wx.ID_CANCEL, _("&Skip this version")),
+        ):
+            button = wx.Button(self, identifier, label)
+            button.Bind(wx.EVT_BUTTON, lambda evt, choice=identifier: self.EndModal(choice))
+            actions.Add(button, 0, wx.RIGHT, 6)
+        main.Add(actions, 0, wx.ALIGN_RIGHT | wx.ALL, 10)
+        self.SetSizer(main)
+        self.SetEscapeId(wx.ID_NO)
+        self.Bind(wx.EVT_CLOSE, self.on_close)
+
+    def on_close(self, event):
+        self.EndModal(wx.ID_NO)  # Window Close is Later, never Skip.
+
+
 class UpdateChecker:
     def __init__(self):
         self._lock = threading.Lock()
         self._busy = False
         self._closed = False
+        self._timer = None
+
+    def configure_auto_checks(self):
+        """Apply settings immediately, without asking the user to restart NVDA."""
+        if self._timer is not None:
+            self._timer.Stop()
+            self._timer = None
+        if (not self._closed and not _managed_by_store()
+                and not getattr(globalVars.appArgs, "secure", False)
+                and config.conf[SECTION]["checkForUpdates"]):
+            self._timer = wx.CallLater(STARTUP_DELAY_MS, self._periodic_tick)
+
+    def _periodic_tick(self):
+        if self._closed:
+            return
+        if _managed_by_store() or not config.conf[SECTION]["checkForUpdates"]:
+            self._timer = None
+            return
+        self.check(manual=False)
+        interval = update_check_interval_ms(config.conf[SECTION]["updateCheckIntervalMinutes"])
+        self._timer = wx.CallLater(interval, self._periodic_tick)
 
     def terminate(self):
         with self._lock:
             self._closed = True
+        if self._timer is not None:
+            self._timer.Stop()
+            self._timer = None
 
     def check(self, manual: bool = False):
         with self._lock:
@@ -117,7 +195,7 @@ class UpdateChecker:
             with urllib.request.urlopen(_request(LATEST_RELEASE_URL), timeout=TIMEOUT_SECONDS) as response:
                 release = validated_release(json.load(response))
             installed = _installed_version()
-            available = bool(release and is_newer(release.version, installed))
+            state = release_state(installed, release)
         except Exception:
             log.warning("Sound Themes: update check unavailable", exc_info=True)
             wx.CallAfter(self._notify, _("Could not check Sound Themes updates.")) if manual else None
@@ -125,11 +203,25 @@ class UpdateChecker:
         finally:
             with self._lock:
                 self._busy = False
-        if not available:
+        if state == "unavailable":
+            if manual:
+                wx.CallAfter(self._notify, _(
+                    "No Sound Themes update is ready to download yet. Please try again later."))
+            return
+        if state == "not_published":
+            if manual:
+                wx.CallAfter(self._notify, _(
+                    "Sound Themes %s is installed, but the latest downloadable release is %s. "
+                    "A newer update may still be publishing. Please check again shortly."
+                ) % (installed, release.version))
+            return
+        if state == "current":
             if manual:
                 wx.CallAfter(self._notify, _("Sound Themes %s is up to date.") % installed)
             return
         if not manual and release.version == config.conf[SECTION]["skippedUpdateVersion"]:
+            return
+        if not manual and release.version == config.conf[SECTION]["lastNotifiedUpdateVersion"]:
             return
         wx.CallAfter(self._offer, installed, release)
 
@@ -140,17 +232,13 @@ class UpdateChecker:
     def _offer(self, installed, release):
         if self._closed:
             return
-        dialog = wx.MessageDialog(gui.mainFrame, _(
-            "Sound Themes {new} is available (installed: {old}).\n\n"
-            "Export any customized sound packs to ZIP before updating: "
-            "installing a new add-on can overwrite WAV edits stored inside it.\n\n"
-            "Download and install it using NVDA's installer? NVDA will ask for confirmation and a restart."
-        ).format(new=release.version, old=installed), _("Sound Themes update"),
-                                  wx.YES_NO | wx.CANCEL | wx.ICON_INFORMATION)
-        dialog.SetYesNoCancelLabels(_("&Update now"), _("&Later"),
-                                    _("&Skip this version"))
+        dialog = ReleaseNotesDialog(gui.mainFrame, installed, release)
+        # Record before opening the modal window so a later timer cannot queue
+        # the same version again while this dialog is still being read.
+        config.conf[SECTION]["lastNotifiedUpdateVersion"] = release.version
         gui.mainFrame.prePopup()
         try:
+            wx.CallAfter(dialog.notes.SetFocus)
             answer = dialog.ShowModal()
         finally:
             dialog.Destroy()

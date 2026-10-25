@@ -10,6 +10,7 @@ import io
 import json
 import shutil
 import queue
+import re
 import struct
 import sys
 import tempfile
@@ -1421,6 +1422,26 @@ class UpdatesAndReleaseTests(unittest.TestCase):
         self.assertEqual(info.sha256, "1" * 64)
         self.assertIn("/releases/download/v0.15.0/", info.download_url)
 
+    def test_release_changelog_is_displayable_text_with_bounded_length(self):
+        published = self._release("0.17.4")
+        published["body"] = "Changes in this version:\n- Faster update checks\x00\x1b"
+        release = release_info.validated_release(published)
+        self.assertEqual(release.notes, "Changes in this version:\n- Faster update checks")
+        published["body"] = "a" * 30000
+        self.assertEqual(len(release_info.validated_release(published).notes), 12000)
+
+    def test_update_status_does_not_call_newer_installed_version_up_to_date(self):
+        available = release_info.validated_release(self._release("0.17.2"))
+        self.assertEqual(release_info.release_state("0.17.0", available), "update")
+        self.assertEqual(release_info.release_state("0.17.2", available), "current")
+        self.assertEqual(release_info.release_state("0.17.3", available), "not_published")
+        self.assertEqual(release_info.release_state("0.17.3", None), "unavailable")
+
+        updater = (PACKAGE_ROOT / "updater.py").read_text(encoding="utf-8")
+        self.assertIn('state == "not_published"', updater)
+        self.assertIn('state == "unavailable"', updater)
+        self.assertIn('"Cache-Control": "no-cache"', updater)
+
     def test_rejects_draft_prerelease_wrong_repo_asset_or_invalid_checksum(self):
         examples = []
         for key in ("draft", "prerelease"):
@@ -1499,18 +1520,45 @@ class UpdatesAndReleaseTests(unittest.TestCase):
 
     def test_local_release_script_is_explicitly_excluded_but_build_remains_automatic(self):
         script_path = ROOT / "release.ps1"
-        self.assertIn('/release.ps1', (ROOT / ".gitignore").read_text(encoding="utf-8"))
+        ignore = (ROOT / ".gitignore").read_text(encoding="utf-8")
+        self.assertIn('/release.ps1', ignore)
+        self.assertIn('/tests/SoundThemes-*.zip', ignore)
+        self.assertIn('/SoundThemes-preserve-custom-wavs-*.zip', ignore)
+        self.assertIn('/SoundThemes-release-space-fix-*.zip', ignore)
         source_builder = (ROOT / "scripts/build_source.py").read_text(encoding="utf-8")
         self.assertIn('OMIT_FILES = {"release.ps1"}', source_builder)
         self.assertIn('ALLOW_HIDDEN = {".github", ".gitignore"}', source_builder)
         self.assertIn('piece.startswith(".") and piece not in ALLOW_HIDDEN', source_builder)
+        self.assertIn('rel.parts[0] == "tests" and path.suffix.lower() == ".zip"',
+                      source_builder)
+        self.assertIn('rel.name.startswith("SoundThemes-")', source_builder)
         workflow = (ROOT / ".github/workflows/build.yml").read_text(encoding="utf-8")
         self.assertIn('gh release create', workflow)
+        self.assertIn('--notes-file RELEASE_NOTES.md', workflow)
+        notes = (ROOT / "RELEASE_NOTES.md").read_text(encoding="utf-8")
+        self.assertIn("## What's new", notes)
+        self.assertIn("## มีอะไรใหม่", notes)
         # This is a private local script: the GitHub Actions checkout must not include it.
         if script_path.is_file():
             script = script_path.read_text(encoding="utf-8")
+            self.assertTrue(script.isascii(), "Windows PowerShell 5.1 must read release.ps1 without a UTF-8 BOM")
+            heading_patterns = re.findall(r"@\{ Path = '([^']+)'; Pattern = '([^']+)'", script)
+            self.assertEqual(len(heading_patterns), 7)
+            for relative_path, expression in heading_patterns:
+                with self.subTest(header=relative_path):
+                    source = (ROOT / relative_path).read_text(encoding="utf-8")
+                    self.assertIsNotNone(re.search(expression, source, flags=re.MULTILINE))
             self.assertIn("Require-Success 'git' @('push', 'origin', $tag)", script)
             self.assertIn("Require-Success 'python' @('scripts/build.py')", script)
+            self.assertIn('Wait-ForPublishedRelease -Tag $tag -Version $Version', script)
+            self.assertIn('Get-GitHubApi "$apiBase/releases/latest"', script)
+            self.assertIn("Path = 'doc/en/readme.html'", script)
+            self.assertIn("Path = 'doc/th/readme.html'", script)
+            self.assertIn("Path = 'PROJECT_STATUS.md'", script)
+            self.assertIn(r'Project status[^\r\n]*$', script)
+            self.assertIn('foreach ($heading in $headings)', script)
+            self.assertIn('No version headers were changed.', script)
+            self.assertNotIn('if ($Version -ne $current)', script)
 
 
 if __name__ == "__main__":

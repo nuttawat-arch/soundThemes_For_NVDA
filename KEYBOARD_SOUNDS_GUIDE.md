@@ -1,4 +1,4 @@
-# Sound Themes for NVDA — Keyboard Sounds (v0.17.0)
+# Sound Themes for NVDA - Keyboard Sounds (v0.17.4)
 
 From v0.16.0 onward, **Escape closes the manager**, and **Escape inside the
 keyboard-capture field asks before discarding edited sounds**. Choose **No**
